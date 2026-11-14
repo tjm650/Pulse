@@ -186,6 +186,7 @@ class PollSerializer(serializers.ModelSerializer):
     vote_statistics = serializers.SerializerMethodField()
     vote_distribution = serializers.SerializerMethodField()
     winner_options = serializers.SerializerMethodField()
+    poll_sections = serializers.SerializerMethodField()
 
     class Meta:
         model = Poll
@@ -224,6 +225,18 @@ class PollSerializer(serializers.ModelSerializer):
             'vote_distribution',
             'winner_options',
         ]
+
+    def get_poll_sections(self, obj):
+        import copy
+
+        sections = copy.deepcopy(obj.poll_sections or [])
+        user = self.context.get("user")
+        user_id = str(user.pk) if user and user.is_authenticated else None
+        for section in sections:
+            for option in section.get("items", []):
+                voter_ids = [str(value) for value in option.pop("user_ids", [])]
+                option["user_voted"] = bool(user_id and user_id in voter_ids)
+        return sections
 
     def get_time_remaining(self, obj):
         return obj.time_remaining
