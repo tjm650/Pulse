@@ -1633,6 +1633,18 @@ const useGlobal = create(
   realtimeChannel: null,
 
   socketConnect: async () => {
+    if (!supabase) {
+      const unavailableAdapter = {
+        readyState: 3,
+        send: () => {
+          console.warn("[Pulse Realtime] Configure EXPO_SUPABASE_URL and EXPO_SUPABASE_PUBLISHABLE_KEY to use realtime features.");
+        },
+        close: () => {},
+      };
+      set({ socket: unavailableAdapter, realtimeChannel: null });
+      return { success: false, error: "Supabase is not configured" };
+    }
+
     const userId = get().user?.id;
     if (!userId) {
       console.warn("[Pulse Realtime] No authenticated user; subscription skipped.");
