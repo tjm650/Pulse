@@ -436,11 +436,7 @@ const useGlobal = create(
               const user = response.data.user;
               const tokens = response.data.tokens;
 
-              if (response.data.confirmation_required || !tokens?.access || !tokens?.refresh) {
-                set((state) => ({ appState: { ...state.appState, isLoading: false } }));
-                return { success: false, error: response.data.message || "Check your email to confirm your account", confirmationRequired: true };
-              }
-
+              await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
               await secure.set("tokens", tokens);
 
               set((state) => ({
@@ -490,8 +486,12 @@ const useGlobal = create(
             if (response.status === 201) {
               const user = response.data.user;
               const tokens = response.data.tokens;
-              
-              await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+
+              if (response.data.confirmation_required || !tokens?.access || !tokens?.refresh) {
+                set((state) => ({ appState: { ...state.appState, isLoading: false } }));
+                return { success: false, error: response.data.message || "Check your email to confirm your account", confirmationRequired: true };
+              }
+
               await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
               await secure.set("tokens", tokens);
               
