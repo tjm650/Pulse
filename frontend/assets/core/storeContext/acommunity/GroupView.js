@@ -46,7 +46,7 @@ function responseGroupMessageSend(set, get, data) {
   // don't update the message list, as a refresh messagelist will be loaded
   // the next time the user opens the correct chat window
 
-  if (username !== get().chatsUsername) {
+  if (data.grpmessage.connection_id !== get().activeGroupConnectionId) {
     return;
   }
 
