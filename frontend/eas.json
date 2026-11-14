@@ -1,5 +1,11 @@
 {
   "cli": {
-    "version": ">= 27.4.1"
+    "version": ">= 27.4.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "autoIncrement": true
+    }
   }
 }
