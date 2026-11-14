@@ -28,7 +28,7 @@ class NotifViewSet(viewsets.ModelViewSet):
             | Q(service__followers=user)
             | Q(service__creator=user)
             | Q(service__moderators=user)
-        ).distinct().order_by("-created")
+        ).filter(service__is_active=True).distinct().order_by("-created")
         service_id = self.request.query_params.get("service")
         if service_id:
             queryset = queryset.filter(service_id=service_id)
@@ -56,19 +56,61 @@ class NotifViewSet(viewsets.ModelViewSet):
                 {"detail": "Only the service owner or an approved moderator can publish updates."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        notif = Notif.objects.create(
-            sender=request.user,
-            service=service,
-            update_type=request.data.get("update_type", "Update"),
-            description=request.data.get("description", ""),
-            image=request.FILES.get("image"),
-            extra_data=(
-                json.loads(request.data.get("extra_data"))
-                if isinstance(request.data.get("extra_data"), str)
-                else (request.data.get("extra_data") or {})
-            ),
-        )
-        return Response(self.get_serializer(notif).data, status=status.HTTP_201_CREATED)
+        extra_data = request.data.get("extra_data") or {}
+        if isinstance(extra_data, str):
+            try:
+                extra_data = json.loads(extra_data)
+            except json.JSONDecodeError:
+                return Response({"detail": "extra_data must be valid JSON."}, status=400)
+        if not isinstance(extra_data, dict):
+            return Response({"detail": "extra_data must be a JSON object."}, status=400)
+
+        update_type = request.data.get("update_type", "Update")
+        with transaction.atomic():
+            notif = Notif.objects.create(
+                sender=request.user,
+                service=service,
+                update_type=update_type,
+                description=request.data.get("description", ""),
+                image=request.FILES.get("image"),
+                extra_data=extra_data,
+            )
+            poll_data = extra_data.get("poll") if isinstance(extra_data.get("poll"), dict) else extra_data
+            if str(update_type).lower() == "poll":
+                title = poll_data.get("title") or "Community Poll"
+                question = poll_data.get("poll_question") or poll_data.get("description") or request.data.get("description", "")
+                sections = poll_data.get("poll_sections") or []
+                if not question or not sections:
+                    return Response(
+                        {"detail": "Polls require a question and at least one poll section."},
+                        status=400,
+                    )
+                Poll.objects.create(
+                    notification=notif,
+                    title=title,
+                    poll_question=question,
+                    poll_type=poll_data.get("poll_type", "single"),
+                    category=poll_data.get("category", "general"),
+                    visibility=poll_data.get("visibility", "public"),
+                    poll_sections=sections,
+                    images=poll_data.get("images") or [],
+                    settings=poll_data.get("settings") or {},
+                    duration_hours=int(poll_data.get("duration_hours") or 24),
+                    allow_comments=bool(poll_data.get("allow_comments", True)),
+                    allow_multiple_votes=bool(poll_data.get("allow_multiple_votes", False)),
+                    anonymous_voting=bool(poll_data.get("anonymous_voting", False)),
+                    hide_results_until_expired=bool(poll_data.get("hide_results_until_expired", False)),
+                    show_results_after_vote=bool(poll_data.get("show_results_after_vote", True)),
+                    send_reminders=bool(poll_data.get("send_reminders", True)),
+                    reminder_frequency_hours=int(poll_data.get("reminder_frequency_hours") or 12),
+                    tags=poll_data.get("tags") or [],
+                )
+
+        response_data = self.get_serializer(notif).data
+        if str(update_type).lower() == "poll":
+            poll = Poll.objects.get(notification=notif)
+            response_data["poll"] = PollSerializer(poll, context=self.get_serializer_context()).data
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="like")
     def like(self, request, pk=None):
@@ -109,7 +151,7 @@ class CommentViewSet(viewsets.ModelViewSet):
             | Q(post__service__creator=user)
             | Q(post__service__followers=user)
             | Q(post__service__moderators=user)
-        ).distinct()
+        ).filter(post__service__is_active=True).distinct()
         post_id = self.request.query_params.get("post")
         if post_id:
             queryset = queryset.filter(post_id=post_id)
