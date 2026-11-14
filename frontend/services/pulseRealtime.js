@@ -24,7 +24,24 @@ async function getProfiles(userIds = []) {
     .in("id", ids);
 
   if (error) throw error;
-  return new Map((data || []).map((profile) => [profile.id, profile]));
+  return new Map(
+    (data || []).map((profile) => {
+      const name = [profile.first_name, profile.last_name]
+        .map((part) => String(part || "").trim())
+        .filter(Boolean)
+        .join(" ") || profile.username || "";
+      return [
+        profile.id,
+        {
+          ...profile,
+          name,
+          full_name: name,
+          image: profile.profile_image_path || null,
+          profile_image: profile.profile_image_path || null,
+        },
+      ];
+    })
+  );
 }
 
 async function getSignedImageUrl(path) {
