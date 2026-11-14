@@ -22,6 +22,13 @@ ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS').split(',') if 
 # --- AUTHENTICATION & REST FRAMEWORK CONFIGURATION ---
 AUTH_USER_MODEL = "api.User"
 
+# Supabase Auth is the identity provider; Django validates its access tokens.
+SUPABASE_URL = config("SUPABASE_URL", default="https://xypngvumzhzhyvclfmyq.supabase.co")
+SUPABASE_PUBLISHABLE_KEY = config(
+    "SUPABASE_PUBLISHABLE_KEY",
+    default="sb_publishable_av4Zj6whC1qDEDW0iZN4Ow_sBkfp0WV",
+)
+
 # JWT Settings (unchanged)
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
@@ -72,8 +79,7 @@ CORS_ALLOWED_HEADERS = [
 REST_FRAMEWORK = { 
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.SessionAuthentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "api.authentication.SupabaseJWTAuthentication",
     ),
 }
 
