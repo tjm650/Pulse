@@ -247,14 +247,15 @@ class PollViewSet(viewsets.ReadOnlyModelViewSet):
             | Q(notification__service__moderators=user)
         ).distinct().order_by("-created_at")
 
-        category = self.request.query_params.get("category")
-        if category:
-            queryset = queryset.filter(category=category)
-        poll_status = self.request.query_params.get("status", "active")
-        if poll_status == "active":
-            queryset = queryset.filter(is_active=True, expired=False)
-        elif poll_status == "expired":
-            queryset = queryset.filter(expired=True)
+        if getattr(self, "action", None) == "list":
+            category = self.request.query_params.get("category")
+            if category:
+                queryset = queryset.filter(category=category)
+            poll_status = self.request.query_params.get("status", "active")
+            if poll_status == "active":
+                queryset = queryset.filter(is_active=True, expired=False)
+            elif poll_status == "expired":
+                queryset = queryset.filter(expired=True)
         return queryset
 
     def get_serializer_context(self):
