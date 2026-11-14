@@ -433,14 +433,14 @@ const useGlobal = create(
             if (response.status === 200) {
               const user = response.data.user;
               const tokens = response.data.tokens;
-              
-              if (response.data.confirmation_required) {
+
+              if (response.data.confirmation_required || !tokens?.access || !tokens?.refresh) {
                 set((state) => ({ appState: { ...state.appState, isLoading: false } }));
-                return { success: false, error: response.data.message, confirmationRequired: true };
+                return { success: false, error: response.data.message || "Check your email to confirm your account", confirmationRequired: true };
               }
 
               await secure.set("tokens", tokens);
-              
+
               set((state) => ({
                 isAuthenticated: true,
                 user,
