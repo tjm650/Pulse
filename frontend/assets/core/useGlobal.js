@@ -1711,7 +1711,8 @@ const useGlobal = create(
 
   socketConnect: async () => {
     const tokens = await secure.get("tokens");
-    const url = `ws://${ADDRESS}/api/?token=${tokens.access}`;
+    const wsProtocol = process.env.EXPO_PUBLIC_API_URL?.startsWith("https://") ? "wss" : "ws";
+    const url = `${wsProtocol}://${ADDRESS}/api/?token=${tokens.access}`;
 
     const socket = new WebSocket(url);
     socket.onopen = () => {
