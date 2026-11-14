@@ -46,7 +46,7 @@ api.interceptors.response.use(
         const tokens = await secure.get("tokens");
         if (tokens?.refresh) {
           const response = await axios.post(`http://${ADDRESS}/api/token/refresh/`, {
-            refresh: tokens.refresh,
+            refresh: response.data.refresh || tokens.refresh,
           });
 
           const newTokens = {
@@ -63,7 +63,6 @@ api.interceptors.response.use(
         console.error("Token refresh failed:", refreshError);
         // Clear invalid tokens
         await secure.remove("tokens");
-        await secure.remove("credentials");
       }
     }
 
