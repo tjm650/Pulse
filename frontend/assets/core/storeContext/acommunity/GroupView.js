@@ -26,8 +26,8 @@ function responseGroupMessageSend(set, get, data) {
   // Update the preview textand update the time stamp
 
   const GroupConnectList = [...get().GroupConnectList];
-  const ConnectIndex = ConnectList.findIndex(
-    (item) => item.grpconnect.username === username
+  const ConnectIndex = GroupConnectList.findIndex(
+    (item) => (item.grpconnect || item.group_chats_sender)?.username === username
   );
   if (ConnectIndex >= 0) {
     const item = GroupConnectList[ConnectIndex];
