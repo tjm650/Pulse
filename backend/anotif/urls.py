@@ -1,12 +1,15 @@
 from django.contrib import admin
-from django.urls import path
-from django.conf import settings
-from django.conf.urls.static import static
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
+
+from .views import CommentViewSet, NotifViewSet, PollViewSet
+
+router = DefaultRouter()
+router.register("Notif", NotifViewSet, basename="service-notification")
+router.register("Comment", CommentViewSet, basename="service-notification-comment")
+router.register("Poll", PollViewSet, basename="service-poll")
 
 urlpatterns = [
-    
-    path('admin/', admin.site.urls),
+    path("", include(router.urls)),
+    path("admin/", admin.site.urls),
 ]
-
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
- 
