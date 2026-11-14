@@ -203,12 +203,14 @@ class CommunityDirectory(models.Model):
     profile_image = models.ImageField(
         upload_to=upload_images,
         null=True,
-        blank=True
+        blank=True,
+        db_column="profile_image_path"
     )
     cover_image = models.ImageField(
         upload_to=upload_images,
         null=True,
-        blank=True
+        blank=True,
+        db_column="cover_image_path"
     )
     
     # Status and visibility
@@ -216,8 +218,8 @@ class CommunityDirectory(models.Model):
     is_featured = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
     
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, db_column="updated_at")
+    created = models.DateTimeField(auto_now_add=True, db_column="created_at")
     
     class Meta:
         db_table = 'community_directories'
