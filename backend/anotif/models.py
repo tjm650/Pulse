@@ -387,101 +387,76 @@ class Poll(models.Model):
         return winners
 
     def record_vote(self, user, option_indices):
-        """
-        Record a vote for the poll
-        option_indices: list of indices for voted options (for multiple choice)
-        """
-        # Check if poll can accept votes
+        """Record a vote while keeping voter identifiers normalized as strings."""
         if not self.can_accept_votes():
             if self.is_expired:
                 raise ValueError("Poll has expired")
-            elif not self.is_active:
+            if not self.is_active:
                 raise ValueError("Poll is not active")
-            else:
-                raise ValueError("Poll cannot accept votes")
+            raise ValueError("Poll cannot accept votes")
 
-        # Additional validation - ensure poll is properly initialized
         if not self.poll_sections:
             raise ValueError("Poll has no voting options")
+        if not option_indices:
+            raise ValueError("At least one option must be selected")
+        if len(set(option_indices)) != len(option_indices):
+            raise ValueError("Duplicate option selections are not allowed")
 
-        # Get all options in flat structure
         all_options = []
-        section_item_map = {}  # Maps global index to (section_index, item_index)
-
+        section_item_map = {}
         for section_idx, section in enumerate(self.poll_sections):
-            for item_idx, item in enumerate(section.get('items', [])):
+            for item_idx, item in enumerate(section.get("items", [])):
                 global_idx = len(all_options)
                 all_options.append(item)
                 section_item_map[global_idx] = (section_idx, item_idx)
 
-        # Validate option indices
-        for idx in option_indices:
-            if idx >= len(all_options):
-                raise ValueError(f"Invalid option index: {idx}")
+        if any(index >= len(all_options) for index in option_indices):
+            raise ValueError("One or more selected option indices are invalid")
 
-        # Handle single vs multiple choice
-        if self.poll_type == 'single':
-            if len(option_indices) == 0:
-                raise ValueError("No option selected for single choice poll")
-            if len(option_indices) > 1:
-                raise ValueError("Single choice poll can only have one vote")
+        if self.poll_type == "single" and len(option_indices) != 1:
+            raise ValueError("Single choice polls accept exactly one option")
 
-            # Remove previous vote if exists
-            for i, option in enumerate(all_options):
-                if user.id in option.get('user_ids', []):
-                    option['votes'] = max(0, option.get('votes', 0) - 1)
-                    option['user_ids'] = [uid for uid in option.get('user_ids', []) if uid != user.id]
-                    break
+        user_id = str(user.pk)
+        if self.poll_type == "single":
+            for option in all_options:
+                existing_ids = [str(value) for value in option.get("user_ids", [])]
+                if user_id in existing_ids:
+                    option["votes"] = max(0, option.get("votes", 0) - 1)
+                    option["user_ids"] = [value for value in existing_ids if value != user_id]
 
-            # Add new vote - validate index exists
-            if option_indices[0] >= len(all_options):
-                raise ValueError(f"Invalid option index: {option_indices[0]}")
-
-            target_option = all_options[option_indices[0]]
-            if 'user_ids' not in target_option:
-                target_option['user_ids'] = []
-            target_option['user_ids'].append(user.id)
-            target_option['votes'] = target_option.get('votes', 0) + 1
-
-        else:  # multiple choice
-            # Toggle votes for each selected option
-            for idx in option_indices:
-                option = all_options[idx]
-                user_ids = option.get('user_ids', [])
-
-                if user.id in user_ids:
-                    # Remove vote
-                    option['votes'] = max(0, option.get('votes', 0) - 1)
-                    option['user_ids'] = [uid for uid in user_ids if uid != user.id]
+            selected = all_options[option_indices[0]]
+            voter_ids = [str(value) for value in selected.get("user_ids", [])]
+            if user_id not in voter_ids:
+                voter_ids.append(user_id)
+                selected["votes"] = selected.get("votes", 0) + 1
+            selected["user_ids"] = voter_ids
+        else:
+            for index in option_indices:
+                option = all_options[index]
+                voter_ids = [str(value) for value in option.get("user_ids", [])]
+                if user_id in voter_ids:
+                    voter_ids = [value for value in voter_ids if value != user_id]
+                    option["votes"] = max(0, option.get("votes", 0) - 1)
                 else:
-                    # Add vote
-                    option['user_ids'].append(user.id)
-                    option['votes'] = option.get('votes', 0) + 1
+                    voter_ids.append(user_id)
+                    option["votes"] = option.get("votes", 0) + 1
+                option["user_ids"] = voter_ids
 
-        # Update poll sections with modified options
         for global_idx, (section_idx, item_idx) in section_item_map.items():
-            self.poll_sections[section_idx]['items'][item_idx] = all_options[global_idx]
+            self.poll_sections[section_idx]["items"][item_idx] = all_options[global_idx]
 
-        # Update statistics
-        self.total_votes = sum(
-            item.get('votes', 0)
-            for section in self.poll_sections
-            for item in section.get('items', [])
-        )
-
-        # Count unique voters
         all_user_ids = set()
+        self.total_votes = 0
         for section in self.poll_sections:
-            for item in section.get('items', []):
-                user_ids = item.get('user_ids', [])
-                all_user_ids.update(user_ids)
-        self.unique_voter_count = len(all_user_ids)
+            for item in section.get("items", []):
+                self.total_votes += item.get("votes", 0)
+                all_user_ids.update(str(value) for value in item.get("user_ids", []))
 
-        # Check if poll should be marked as expired
+        self.unique_voter_count = len(all_user_ids)
+        self.total_voters = self.unique_voter_count
         if self.is_expired:
             self.expired = True
             self.is_active = False
-
         self.save()
 
     def get_poll_results(self):
