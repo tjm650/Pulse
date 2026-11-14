@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -10,7 +9,7 @@ urlpatterns = [
     path('signin', views.UserSignIn.as_view(), name='signin'),
     path('signout', views.UserLogout.as_view(), name='signout'),
     path('signup', views.UserSignUp.as_view(), name='signup'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/refresh/', views.SupabaseTokenRefresh.as_view(), name='token_refresh'),
     
     # User profile and preferences
     path('user/profile', views.UserProfile.as_view(), name='user_profile'),
