@@ -3,6 +3,101 @@ import { supabase } from "@/services/supabase";
 const PROFILE_FIELDS =
   "id,username,first_name,last_name,bio,profession,prof_initial,program,service_name,location,website,directory_status1,profile_image_path,cover_image_path,verified";
 
+const typingChannels = new Map();
+const typingTimeouts = new Map();
+
+function getTypingTopic(conversationId, isGroup = false) {
+  const id = Number(conversationId);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error("A valid conversation is required for typing indicators.");
+  }
+  return `pulse:${isGroup ? "group" : "dm"}:${id}`;
+}
+
+export async function subscribeTyping(conversationId, isGroup, onTyping) {
+  const userId = await requireUserId();
+  const topic = getTypingTopic(conversationId, isGroup);
+  const existing = typingChannels.get(topic);
+  if (existing) {
+    await supabase.removeChannel(existing);
+  }
+
+  const channel = supabase.channel(topic, {
+    config: {
+      private: true,
+      broadcast: { ack: false, self: false },
+    },
+  });
+
+  channel.on("broadcast", { event: "typing" }, ({ payload }) => {
+    if (!payload?.userId || payload.userId === userId) return;
+    const previous = typingTimeouts.get(topic);
+    if (previous) clearTimeout(previous);
+
+    if (!payload.typing) {
+      typingTimeouts.delete(topic);
+      onTyping?.(null);
+      return;
+    }
+
+    onTyping?.({
+      userId: payload.userId,
+      username: payload.username || "Someone",
+    });
+
+    const timeout = setTimeout(() => {
+      typingTimeouts.delete(topic);
+      onTyping?.(null);
+    }, 3500);
+    typingTimeouts.set(topic, timeout);
+  });
+
+  channel.subscribe((status, error) => {
+    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.warn("[Pulse Realtime] Typing channel unavailable:", error?.message || status);
+    }
+  });
+
+  typingChannels.set(topic, channel);
+  return channel;
+}
+
+export async function publishTyping(conversationId, isGroup, typing, username) {
+  await requireUserId();
+  const topic = getTypingTopic(conversationId, isGroup);
+  const channel = typingChannels.get(topic);
+  if (!channel) return { success: false, reason: "typing_channel_not_ready" };
+
+  const { data } = await supabase.auth.getUser();
+  return channel.send({
+    type: "broadcast",
+    event: "typing",
+    payload: {
+      userId: data.user.id,
+      username: String(username || "Someone").slice(0, 80),
+      typing: Boolean(typing),
+    },
+  });
+}
+
+export async function unsubscribeTyping(conversationId, isGroup = false) {
+  const topic = getTypingTopic(conversationId, isGroup);
+  const timeout = typingTimeouts.get(topic);
+  if (timeout) clearTimeout(timeout);
+  typingTimeouts.delete(topic);
+  const channel = typingChannels.get(topic);
+  typingChannels.delete(topic);
+  if (channel) await supabase.removeChannel(channel);
+}
+
+export async function unsubscribeAllTyping() {
+  const channels = [...typingChannels.values()];
+  typingChannels.clear();
+  for (const timeout of typingTimeouts.values()) clearTimeout(timeout);
+  typingTimeouts.clear();
+  if (channels.length) await Promise.all(channels.map((channel) => supabase.removeChannel(channel)));
+}
+
 async function requireUserId() {
   if (!supabase) {
     throw new Error("Supabase is not configured in this development environment. Messaging and Realtime features are unavailable.");
