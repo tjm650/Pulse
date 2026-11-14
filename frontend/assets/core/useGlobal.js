@@ -360,8 +360,8 @@ const useGlobal = create(
             if (tokens?.access) {
               try {
                 if (supabase) {
-                  await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
-                }
+                await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+              }
                 const response = await api({
                   method: "GET",
                   url: "/api/user/profile",
@@ -1637,6 +1637,19 @@ const useGlobal = create(
     if (!userId) {
       console.warn("[Pulse Realtime] No authenticated user; subscription skipped.");
       return { success: false, error: "Not authenticated" };
+    }
+
+    if (!supabase) {
+      console.info("[Pulse Realtime] Supabase is not configured; messaging and Realtime are disabled in this environment.");
+      set({
+        realtimeChannel: null,
+        socket: null,
+        ConnectList: [],
+        GroupConnectList: [],
+        usernotifList: [],
+        usernotifListUnread: [],
+      });
+      return { success: true, disabled: true };
     }
 
     const existingChannel = get().realtimeChannel;
