@@ -48,4 +48,4 @@ Pulse/
 4. Wait for Expo to display its QR code, then open the installed Pulse Android development build and scan the code (or use the development server entry if it appears).
 5. Keep the Codespace running while testing. Stop the Codespace from GitHub when finished.
 
-This Codespaces configuration is for development only. It does not change the Render Django service, production EAS build profile, production environment variables, or production deployment.
+This Codespaces configuration is for development only. It does not change the Render Django service, production EAS build profile, production environment variables, or production deployment. No Supabase credentials are required to start the app in Codespaces. Supabase-backed messaging and Realtime features remain disabled until a trusted development Supabase configuration is supplied; do not add production Supabase values to Codespaces.
