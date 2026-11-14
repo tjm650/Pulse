@@ -40,8 +40,9 @@ class AppNotifSerializer(serializers.ModelSerializer):
     
     def get_receiver(self, obj):
         selfuser = self.context["user"]
-        values = obj.receiver.all()
-        return PublicUserSerializer(values, many=True).data
+        if not selfuser or not selfuser.is_authenticated:
+            return []
+        return PublicUserSerializer([selfuser], many=True).data
 
         
     
@@ -56,12 +57,7 @@ class AppNotifSerializer(serializers.ModelSerializer):
 
     def get_user_interacted(self, obj):
         selfuser = self.context["user"]
-
-        values = obj.interactions.all()
-        for v in values:
-            if selfuser == v:
-                val = True
-                return val
+        return bool(selfuser and selfuser.is_authenticated and obj.interactions.filter(pk=selfuser.pk).exists())
             
     
     
