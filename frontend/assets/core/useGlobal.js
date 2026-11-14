@@ -2047,7 +2047,7 @@ const useGlobal = create(
       const response = await api.get("/ablog/Blog/", { params: { page: page || 1 } });
       const rows = response.data?.results || response.data || [];
       const next = response.data?.next;
-      const nextPage = next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+      const nextPage = next ? Number(next.match(/[?&]page=(\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
       set({
         DailyBlogList: page ? [...get().DailyBlogList, ...rows] : rows,
         blogsNext: nextPage,
@@ -2067,7 +2067,7 @@ const useGlobal = create(
     if (image?.uri) {
       form.append("image", {
         uri: image.uri,
-        name: image.fileName || image.fileName || "blog-image.jpg",
+        name: image.fileName || image.name || "blog-image.jpg",
         type: image.mimeType || image.type || "image/jpeg",
       });
     }
@@ -2115,7 +2115,7 @@ const useGlobal = create(
       const response = await api.get("/auserpost/Post/", { params: { page: page || 1 } });
       const rows = response.data?.results || response.data || [];
       const next = response.data?.next;
-      const nextPage = next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+      const nextPage = next ? Number(next.match(/[?&]page=(\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
       set({
         PostList: page ? [...get().PostList, ...rows] : rows,
         PostsNext: nextPage,
@@ -2134,7 +2134,7 @@ const useGlobal = create(
     if (image?.uri) {
       form.append("image", {
         uri: image.uri,
-        name: image.fileName || image.fileName || "post-image.jpg",
+        name: image.fileName || image.name || "post-image.jpg",
         type: image.mimeType || image.type || "image/jpeg",
       });
     }
@@ -2196,7 +2196,7 @@ const useGlobal = create(
       const next = response.data?.next;
       set({
         PostCommentsList: page > 1 ? [...get().PostCommentsList, ...rows] : rows,
-        PostsCommentsNext: next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || page + 1) : null,
+        PostsCommentsNext: next ? Number(next.match(/[?&]page=(\d+)/)?.[1] || page + 1) : null,
       });
     }).catch((error) => console.error("[Pulse Posts] Comment load failed:", error.message));
   },
@@ -2235,7 +2235,7 @@ const useGlobal = create(
       });
       const rows = response.data?.results || response.data || [];
       const next = response.data?.next;
-      const nextPage = next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+      const nextPage = next ? Number(next.match(/[?&]page=(\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
       set({
         notifList: page ? [...get().notifList, ...rows] : rows,
         notifNext: nextPage,
@@ -2334,7 +2334,7 @@ const useGlobal = create(
       const next = response.data?.next;
       set({
         notifPostCommentsList: page > 1 ? [...get().notifPostCommentsList, ...rows] : rows,
-        notifPostsCommentsNext: next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || page + 1) : null,
+        notifPostsCommentsNext: next ? Number(next.match(/[?&]page=(\d+)/)?.[1] || page + 1) : null,
       });
     }).catch((error) => console.error("[Pulse Notifications] Comment load failed:", error.message));
   },
@@ -2362,7 +2362,7 @@ const useGlobal = create(
       const next = response.data?.next;
       set({
         pollList: page ? [...get().pollList, ...rows] : rows,
-        pollNext: next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null,
+        pollNext: next ? Number(next.match(/[?&]page=(\d+)/)?.[1] || (Number(page || 1) + 1)) : null,
         loading: false,
         error: null,
       });
@@ -2690,7 +2690,7 @@ const useGlobal = create(
     const response = await api.get("/app_notif/Notif/", { params: { page: page || 1 } });
     const rows = response.data?.results || response.data || [];
     const nextUrl = response.data?.next;
-    const nextPage = nextUrl ? Number(nextUrl.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+    const nextPage = nextUrl ? Number(nextUrl.match(/[?&]page=(\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
     set({
       appNotifList: page ? [...get().appNotifList, ...rows] : rows,
       appNotifNext: nextPage,
