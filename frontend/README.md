@@ -6,17 +6,18 @@ The source of truth is `tjm650/Community` on `main`. Preserve the existing desig
 
 ## Runtime endpoints
 
-Configure the Expo environment for the Pulse deployment:
-- `EXPO_PUBLIC_API_URL`: full URL of the deployed Pulse Django API (HTTPS in production)
+Configure these environment variables for the Pulse deployment:
+
+- `EXPO_API_URL`: full URL of the deployed Pulse Django API (HTTPS in production)
 - `EXPO_PUBLIC_API_HOST`: API hostname used by the existing WebSocket connection
-- `EXPO_PUBLIC_SUPABASE_URL`: Supabase project URL
-- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key
+- `EXPO_SUPABASE_URL`: Supabase project URL
+- `EXPO_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key
 
 The Supabase publishable key is intended for client applications. Never place a database password or Supabase service-role key in the frontend. The local API fallback is `http://localhost:8000`; set the deployed API URL before testing on a physical device or production build.
 
 ## Local development environment
 
-For GitHub Codespaces or local development, create `frontend/.env` from `frontend/.env.example` and enter the Supabase project URL and publishable key. The `.env` file is ignored by Git and must not be committed. Alternatively, define the same `EXPO_PUBLIC_*` variables as Codespaces secrets/environment variables.
+For GitHub Codespaces or local development, create `frontend/.env` from `frontend/.env.example` and enter the Supabase publishable key. The `.env` file is ignored by Git and must not be committed. Alternatively, define the same variables in the Codespaces environment.
 
 After setting them, restart Metro from `frontend/`:
 
@@ -24,12 +25,10 @@ After setting them, restart Metro from `frontend/`:
 npx expo start --dev-client --tunnel --clear
 ```
 
-The app config maps the documented `EXPO_PUBLIC_*` names into Expo's runtime `extra` values and retains compatibility with the older `EXPO_SUPABASE_*` names.
+## Expo environment variables
 
-## Supabase environment variables
+The app config passes `EXPO_API_URL`, `EXPO_SUPABASE_URL`, and `EXPO_SUPABASE_PUBLISHABLE_KEY` into Expo runtime `extra` values. The API client and Supabase client read those runtime values. These names intentionally do not use the `EXPO_PUBLIC_` prefix.
 
-The frontend reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` directly using Expo's supported `process.env.EXPO_PUBLIC_*` substitution. They must be present when the JavaScript bundle is created.
-
-For EAS Build/Update, define both variables in the Expo project's EAS environment (for example, the `development` and `production` environments). For GitHub Codespaces, define them as Codespaces secrets/environment variables so the Metro process receives them. EAS-hosted variables are not automatically injected into a separately running Codespace.
+For EAS Build/Update, define all three variables in the appropriate Expo project EAS environments (for example, `development` and `production`). For GitHub Codespaces, define them as Codespaces secrets/environment variables so the Metro process receives them. EAS-hosted variables are not automatically injected into a separately running Codespace.
 
 A local `frontend/.env` file is optional: it is a convenient way to provide the same values to local Metro. Copy `.env.example` to `.env` only if you are not supplying them through the platform environment. Never commit `.env`. The publishable key is designed for client use; database access must still be protected by Supabase Row Level Security. Never use the service-role key in the app.
