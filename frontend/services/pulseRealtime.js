@@ -320,15 +320,16 @@ export async function getGroupConnections() {
         .map((member) => member.user_id),
     ]);
     const latest = latestByGroup.get(group.id);
+    const creator = profiles.get(group.creator_id) || { id: group.creator_id };
     return {
       id: group.id,
       name: group.name,
       updated: latest?.created_at || group.updated_at,
       preview: latest?.text || "No messages yet",
       group_chats_sender: latest
-        ? profiles.get(latest.sender_id) || { id: latest.sender_id }
-        : null,
-      grpconnect: profiles.get(group.creator_id) || { id: group.creator_id },
+        ? profiles.get(latest.sender_id) || creator
+        : creator,
+      grpconnect: creator,
       members: [...memberIdsForGroup].map((id) => profiles.get(id) || { id }),
       is_member: memberIdsForGroup.has(userId),
     };
