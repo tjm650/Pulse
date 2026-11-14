@@ -15,6 +15,10 @@ import {
   getUserNotifications,
   markUserNotificationRead,
   subscribePulseRealtime,
+  subscribeTyping,
+  publishTyping,
+  unsubscribeTyping,
+  unsubscribeAllTyping,
 } from "@/services/pulseRealtime";
 import secure from "@/assets/core/secure";
 import utils from "@/assets/core/utils";
@@ -1506,7 +1510,7 @@ const useGlobal = create(
   sendTypingWithQuercus: async (conversationId, isTyping = true) => {
     try {
       // Send regular typing indicator
-      await get().messageType(get().user?.username);
+      await get().messageType(get().activeMessageConnectionId, isTyping);
 
       // If typing stopped and Quercus integration is enabled, check for suggestions
       if (!isTyping && get().quercusAI.messageIntegration.enableQuercusInMessages) {
@@ -1812,6 +1816,11 @@ const useGlobal = create(
             case "message.list": {
               const result = await getDirectMessages(event.connectionId, event.page || 0);
               responseMessageList(set, get, result);
+              await subscribeTyping(event.connectionId, false, (typing) => {
+                if (get().activeMessageConnectionId === event.connectionId) {
+                  set({ MessagesTyping: typing });
+                }
+              });
               break;
             }
             case "message.send": {
@@ -1821,6 +1830,7 @@ const useGlobal = create(
                   ? { base64: event.imageBase64, fileName: event.imageFilename }
                   : null,
               });
+              await publishTyping(event.connectionId, false, false, get().user?.username);
               break;
             }
             case "message.red": {
@@ -1834,10 +1844,16 @@ const useGlobal = create(
             case "groupmessages.list": {
               const result = await getGroupMessages(event.grpConnId, event.page || 0);
               responseGroupMessageList(set, get, result);
+              await subscribeTyping(event.grpConnId, true, (typing) => {
+                if (get().activeGroupConnectionId === event.grpConnId) {
+                  set({ GroupMessagesTyping: typing });
+                }
+              });
               break;
             }
             case "groupmessages.send": {
               await sendGroupMessage(event.grpConnId, event.grpmessage);
+              await publishTyping(event.grpConnId, true, false, get().user?.username);
               break;
             }
             case "user.notif.all_notifs": {
@@ -1852,10 +1868,24 @@ const useGlobal = create(
               await markUserNotificationRead(event.notif_user_id);
               break;
             }
-            case "message.type":
-            case "groupmessages.type":
-              console.info("[Pulse Realtime] Typing indicators are not enabled yet.");
+            case "message.type": {
+              await publishTyping(
+                event.connectionId || get().activeMessageConnectionId,
+                false,
+                event.typing !== false,
+                get().user?.username
+              );
               break;
+            }
+            case "groupmessages.type": {
+              await publishTyping(
+                event.grpConnId || get().activeGroupConnectionId,
+                true,
+                event.typing !== false,
+                get().user?.username
+              );
+              break;
+            }
             default:
               console.warn(
                 `[Pulse Realtime] Legacy event "${event.source}" is not migrated yet.`
@@ -1902,6 +1932,7 @@ const useGlobal = create(
 
   socketClose: async () => {
     const channel = get().realtimeChannel;
+    await unsubscribeAllTyping();
     if (channel) {
       await supabase?.removeChannel(channel);
     }
@@ -2379,6 +2410,7 @@ const useGlobal = create(
   messagesNext: null,
   activeMessageConnectionId: null,
   MessagesTyping: null,
+  GroupMessagesTyping: null,
   messagesUsername: null,
 
   messageList: (connectionId, page = 0) => {
@@ -2418,12 +2450,13 @@ const useGlobal = create(
     );
   },
 
-  messageType: (username) => {
+  messageType: (connectionId, typing = true) => {
     const socket = get().socket;
     socket.send(
       JSON.stringify({
         source: "message.type",
-        username: username,
+        connectionId: connectionId,
+        typing,
       })
     );
   },
@@ -2482,12 +2515,13 @@ const useGlobal = create(
     );
   },
 
-  groupMessageType: (username) => {
+  groupMessageType: (grpConnId, typing = true) => {
     const socket = get().socket;
     socket.send(
       JSON.stringify({
         source: "groupmessages.type",
-        username: username,
+        grpConnId,
+        typing,
       })
     );
   },
