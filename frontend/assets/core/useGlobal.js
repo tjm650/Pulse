@@ -2196,106 +2196,93 @@ const useGlobal = create(
   pollStatistics: {},
   pollVoteDistribution: [],
   pollWinners: [],
-  notificationList: (notifId, userId, action, page = 0) => {
-    if (page === 0) {
-      set((state) => ({
-        notifUsername: [],
-        notifList: [],
-        notifNext: null,
-        loading: true,
+  notificationList: async (notifId, userId, action, page = 0) => {
+    if (page === 0) set({ notifUsername: null, notifList: [], notifNext: null, loading: true, error: null });
+    try {
+      const response = await api.get("/anotif/Notif/", {
+        params: { service: notifId || undefined, page: page || 1 },
+      });
+      const rows = response.data?.results || response.data || [];
+      const next = response.data?.next;
+      const nextPage = next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+      set({
+        notifList: page ? [...get().notifList, ...rows] : rows,
+        notifNext: nextPage,
+        loading: false,
         error: null,
-      }));
-    } else {
-      set((state) => ({
-        notifNext: null,
-      }));
+      });
+      return rows;
+    } catch (error) {
+      set({ loading: false, error: error.message });
+      console.error("[Pulse Notifications] Load failed:", error.message);
+      throw error;
     }
-
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.list",
-        page: page,
-        notifId: notifId,
-        userId: userId,
-        action: action,
-      })
-    );
   },
 
-  notifLike: (notifId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.likes",
-        action: action,
-        notifId: notifId,
-        userId: userId,
-      }) 
-    );
-  },      
-
-  notifSend: (details, file) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.send",
-        sender: details.sender,
-        service: details.service,
-        update_type: details.update_type,
-        imageBase64: details.image ? details.image.base64 : null,
-        imageFilename: details.image ? details.image.fileName : null,
-        description: details.description,
-        extra_data: details.extra_data,
-      })
-    );
-  }, 
-
-  notifPostInteraction: (postId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.interactions",
-        action: action,
-        notifId: postId,
-        userId: userId,
-      })
-    );
+  notifLike: async (notifId, userId, action) => {
+    const response = await api.post(`/anotif/Notif/${notifId}/like/`, { action });
+    set({
+      notifList: get().notifList.map((item) =>
+        item.id === notifId
+          ? { ...item, user_liked: response.data.liked, likes_count: response.data.likes_count }
+          : item
+      ),
+    });
+    return response.data;
   },
 
-  notifCommentInteraction: (postId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.comment.interactions",
-        action: action,
-        notifId: postId,
-        userId: userId,
-      })
-    );
+  notifSend: async (details, file) => {
+    const form = new FormData();
+    form.append("service", String(details.service?.id || details.service || details.serviceId || ""));
+    form.append("update_type", String(details.update_type || "Update"));
+    form.append("description", String(details.description || ""));
+    if (details.extra_data) form.append("extra_data", JSON.stringify(details.extra_data));
+    const image = details.image || file;
+    if (image?.uri) {
+      form.append("image", {
+        uri: image.uri,
+        name: image.fileName || image.name || "service-update.jpg",
+        type: image.mimeType || image.type || "image/jpeg",
+      });
+    }
+    const response = await api.post("/anotif/Notif/", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    set({ notifList: [response.data, ...get().notifList] });
+    return response.data;
   },
 
-  notifCommentLike: (postId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.comment.likes",
-        action: action,
-        notifId: postId,
-        userId: userId,
-      })
-    );
+  notifPostInteraction: async (postId, userId, action) => {
+    const response = await api.post(`/anotif/Notif/${postId}/interact/`, { action });
+    set({
+      notifList: get().notifList.map((item) =>
+        item.id === postId
+          ? { ...item, user_interacted: response.data.interacted, interactions_count: response.data.interactions_count }
+          : item
+      ),
+    });
+    return response.data;
   },
 
-  notifPollVote: (notifId, pollOptionIndex) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.poll.vote",
-        notifId: notifId,
-        pollOptionIndices: Array.isArray(pollOptionIndex) ? pollOptionIndex : [pollOptionIndex],
-      })
-    );
+  notifCommentInteraction: async (commentId, userId, action) => {
+    return (await api.post(`/anotif/Comment/${commentId}/interact/`, { action })).data;
+  },
+
+  notifCommentLike: async (commentId, userId, action) => {
+    return (await api.post(`/anotif/Comment/${commentId}/like/`, { action })).data;
+  },
+
+  notifPollVote: async (notifId, pollOptionIndex) => {
+    const response = await api.post(`/anotif/Poll/${notifId}/vote/`, {
+      pollOptionIndices: Array.isArray(pollOptionIndex) ? pollOptionIndex : [pollOptionIndex],
+    });
+    set({
+      pollDetails: response.data,
+      pollList: get().pollList.map((item) =>
+        item.notification?.id === notifId ? response.data : item
+      ),
+    });
+    return response.data;
   },
 
   notifPostCommentsList: [],
@@ -2311,100 +2298,82 @@ const useGlobal = create(
         notifPostsCommentsNext: null,
       }));
     }
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.comment.list",
-        notifId: postId,
-        page: page,
-      })
-    );
+    api.get("/anotif/Comment/", { params: { post: postId, page } }).then((response) => {
+      const rows = response.data?.results || response.data || [];
+      const next = response.data?.next;
+      set({
+        notifPostCommentsList: page > 1 ? [...get().notifPostCommentsList, ...rows] : rows,
+        notifPostsCommentsNext: next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || page + 1) : null,
+      });
+    }).catch((error) => console.error("[Pulse Notifications] Comment load failed:", error.message));
   },
 
-  sendNotifPostComment: (details) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.comment.send",
-        userId: details.userId,
-        notifId: details.postId,
-        description: details.description,
-      })
-    );
+  sendNotifPostComment: async (details) => {
+    const response = await api.post("/anotif/Comment/", {
+      post: details.postId,
+      description: details.description,
+    });
+    set({ notifPostCommentsList: [response.data, ...get().notifPostCommentsList] });
+    return response.data;
   },
 
   /////////////////////////////////////////// Poll Methods ///////////////////////////
   /////////////////////////////////////////// Poll Methods ///////////////////////////
   /////////////////////////////////////////// Poll Methods ///////////////////////////
 
-  pollList: (page = 0, category = null, status = "active") => {
-    if (page === 0) {
-      set((state) => ({
-        pollList: [],
-        pollNext: null,
-        loading: true,
+  pollList: async (page = 0, category = null, status = "active") => {
+    if (page === 0) set({ pollList: [], pollNext: null, loading: true, error: null });
+    try {
+      const response = await api.get("/anotif/Poll/", {
+        params: { page: page || 1, category: category || undefined, status },
+      });
+      const rows = response.data?.results || response.data || [];
+      const next = response.data?.next;
+      set({
+        pollList: page ? [...get().pollList, ...rows] : rows,
+        pollNext: next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null,
+        loading: false,
         error: null,
-      }));
-    } else {
-      set((state) => ({
-        pollNext: null,
-      }));
+      });
+      return rows;
+    } catch (error) {
+      set({ loading: false, error: error.message });
+      throw error;
     }
-
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.poll.list",
-        page: page,
-        category: category,
-        status: status,
-      })
-    );
   },
 
-  pollDetails: (notifId) => {
-    set((state) => ({
-      pollDetails: null,
-      loading: true,
-      error: null,
-    }));
-
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.poll.details",
-        notifId: notifId,
-      })
-    );
+  pollDetails: async (notifId) => {
+    set({ pollDetails: null, loading: true, error: null });
+    try {
+      const response = await api.get(`/anotif/Poll/${notifId}/`);
+      set({ pollDetails: response.data, loading: false, error: null });
+      return response.data;
+    } catch (error) {
+      set({ loading: false, error: error.message });
+      throw error;
+    }
   },
 
-  pollStatistics: (notifId) => {
-    set((state) => ({
-      pollStatistics: {},
-      pollVoteDistribution: [],
-      pollWinners: [],
-      loading: true,
-      error: null,
-    }));
-
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.poll.statistics",
-        notifId: notifId,
-      })
-    );
+  pollStatistics: async (notifId) => {
+    set({ pollStatistics: {}, pollVoteDistribution: [], pollWinners: [], loading: true, error: null });
+    try {
+      const response = await api.get(`/anotif/Poll/${notifId}/statistics/`);
+      set({
+        pollStatistics: response.data.statistics || {},
+        pollVoteDistribution: response.data.vote_distribution || [],
+        pollWinners: response.data.winners || [],
+        loading: false,
+        error: null,
+      });
+      return response.data;
+    } catch (error) {
+      set({ loading: false, error: error.message });
+      throw error;
+    }
   },
 
-  pollVote: (notifId, pollOptionIndices) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "notif.poll.vote",
-        notifId: notifId,
-        pollOptionIndices: Array.isArray(pollOptionIndices) ? pollOptionIndices : [pollOptionIndices],
-      })
-    );
+  pollVote: async (notifId, pollOptionIndices) => {
+    return get().notifPollVote(notifId, pollOptionIndices);
   },
 
   /////////////////////////////////////////// Connections ///////////////////////////
