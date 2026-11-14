@@ -174,7 +174,7 @@ export async function getDirectConnections() {
     }
   }
 
-  return Promise.all(connections.map(async (connection) => {
+  const items = await Promise.all(connections.map(async (connection) => {
     const otherId =
       connection.sender_id === userId ? connection.receiver_id : connection.sender_id;
     const connect = profiles.get(otherId) || { id: otherId };
@@ -189,6 +189,7 @@ export async function getDirectConnections() {
       updated: latest?.created_at || connection.updated_at,
     };
   }));
+  return items.sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0));
 }
 
 export async function sendDirectMessage(details) {
@@ -294,7 +295,7 @@ export async function getGroupConnections() {
     }
   }
 
-  return groups.map((group) => {
+  const items = groups.map((group) => {
     const memberIdsForGroup = new Set([
       group.creator_id,
       ...(memberships || [])
@@ -315,6 +316,7 @@ export async function getGroupConnections() {
       is_member: memberIdsForGroup.has(userId),
     };
   });
+  return items.sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0));
 }
 
 export async function getGroupMessages(groupId, page = 0) {
