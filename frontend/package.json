@@ -1,6 +1,6 @@
 {
-  "homepage": "https://tjm650.github.io/Community/",
-  "name": "community",
+  "homepage": "https://tjm650.github.io/Pulse/",
+  "name": "pulse",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
