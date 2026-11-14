@@ -1,5 +1,9 @@
 # Pulse database
 
-This directory contains Supabase PostgreSQL schema and migration artifacts for Pulse.
+Pulse uses Supabase PostgreSQL as its database.
 
-Database tables, relationships, constraints, indexes, Row Level Security policies, and storage policies must be derived from the original Community Django models and actual application workflows. Do not invent schema or policies.
+Django remains responsible for the application models, database access, and schema migrations. The authoritative migrations are kept with their Django apps under `backend/<app>/migrations/` and are applied using Django's normal migration workflow.
+
+The Django database connection reads `DATABASE_URL` from the environment. Supabase connection details are intentionally not committed to this repository.
+
+Do not create a second, independently maintained schema that duplicates the Django models and migrations.
