@@ -507,59 +507,109 @@ class NotificationView(BaseAPIView):
 
 class SearchView(BaseAPIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         try:
-            query = request.GET.get('q', '').strip()
-            search_type = request.GET.get('type', 'all')  # all, users, communities, posts
-            page = int(request.GET.get('page', 1))
-            limit = min(int(request.GET.get('limit', 20)), 100)
-            
-            if not query or len(query) < 2:
+            query = request.GET.get("q", "").strip()
+            search_type = request.GET.get("type", "all")
+            limit = min(max(int(request.GET.get("limit", 20)), 1), 100)
+
+            if len(query) < 2:
                 return Response({
-                    'error': 'Invalid search query',
-                    'message': 'Search query must be at least 2 characters long'
+                    "error": "Invalid search query",
+                    "message": "Search query must be at least 2 characters long",
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             results = {
-                'users': [],
-                'communities': [],
-                'posts': []
+                "users": [],
+                "communities": [],
+                "posts": [],
+                "blogs": [],
+                "notifications": [],
             }
-            
-            if search_type in ['all', 'users']:
+
+            if search_type in ["all", "users"]:
                 users = User.objects.filter(
-                    Q(username__icontains=query) |
-                    Q(first_name__icontains=query) |
-                    Q(last_name__icontains=query) |
-                    Q(bio__icontains=query)
+                    Q(username__icontains=query)
+                    | Q(first_name__icontains=query)
+                    | Q(last_name__icontains=query)
+                    | Q(bio__icontains=query)
                 ).filter(is_active=True).filter(
-                    Q(preferences__profile_visibility='public') |
-                    Q(preferences__isnull=True) |
-                    Q(pk=request.user.pk)
+                    Q(preferences__profile_visibility="public")
+                    | Q(preferences__isnull=True)
+                    | Q(pk=request.user.pk)
                 ).distinct()[:limit]
-                results['users'] = PublicUserSerializer(users, many=True).data
-            
-            if search_type in ['all', 'communities']:
+                results["users"] = PublicUserSerializer(users, many=True).data
+
+            if search_type in ["all", "communities"]:
                 communities = CommunityDirectory.objects.filter(
-                    Q(username__icontains=query) |
-                    Q(directory_status1__icontains=query) |
-                    Q(bio__icontains=query)
-                ).filter(is_active=True)[:limit]
-                results['communities'] = CommunityDirectorySerializer(communities, many=True).data
-            
+                    Q(username__icontains=query)
+                    | Q(directory_status1__icontains=query)
+                    | Q(bio__icontains=query),
+                    is_active=True,
+                ).filter(
+                    Q(public=True)
+                    | Q(creator=request.user)
+                    | Q(followers=request.user)
+                    | Q(moderators=request.user)
+                ).distinct()[:limit]
+                results["communities"] = CommunityDirectorySerializer(communities, many=True).data
+
+            if search_type in ["all", "posts"]:
+                posts = Post.objects.filter(
+                    description__icontains=query
+                ).select_related("sender").order_by("-created")[:limit]
+                results["posts"] = PostSerializer(
+                    posts, many=True, context={"request": request, "user": request.user}
+                ).data
+
+            if search_type in ["all", "blogs"]:
+                from ablog.models import Bloger
+                from ablog.serializers import BlogSerializer
+                blogs = Bloger.objects.filter(
+                    description__icontains=query,
+                    service__is_active=True,
+                ).filter(
+                    Q(service__public=True)
+                    | Q(service__creator=request.user)
+                    | Q(service__followers=request.user)
+                    | Q(service__moderators=request.user)
+                ).select_related("sender", "service").distinct().order_by("-created")[:limit]
+                results["blogs"] = BlogSerializer(
+                    blogs, many=True, context={"request": request, "user": request.user}
+                ).data
+
+            if search_type in ["all", "notifications"]:
+                from anotif.models import Notif
+                from anotif.serializers import NotifSerializer
+                notifications = Notif.objects.filter(
+                    description__icontains=query,
+                    service__is_active=True,
+                ).filter(
+                    Q(service__public=True)
+                    | Q(service__creator=request.user)
+                    | Q(service__followers=request.user)
+                    | Q(service__moderators=request.user)
+                ).select_related("sender", "service").distinct().order_by("-created")[:limit]
+                results["notifications"] = NotifSerializer(
+                    notifications, many=True, context={"request": request, "user": request.user}
+                ).data
+
             return Response({
-                'query': query,
-                'results': results,
-                'total_results': sum(len(v) for v in results.values())
+                "query": query,
+                "results": results,
+                "total_results": sum(len(value) for value in results.values()),
             }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Search error: {str(e)}")
+
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid search parameters."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Search error")
             return Response({
-                'error': 'Search failed',
-                'message': 'An error occurred during search'
+                "error": "Search failed",
+                "message": "An error occurred during search",
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class TrendingView(BaseAPIView):
     permission_classes = [IsAuthenticated]
