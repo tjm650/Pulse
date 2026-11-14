@@ -18,6 +18,11 @@ class BlogViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     parser_classes = (MultiPartParser, FormParser)
 
+    def get_permissions(self):
+        if getattr(self, "action", None) in {"interact", "share"}:
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["user"] = self.request.user
