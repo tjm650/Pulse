@@ -67,17 +67,21 @@ DATABASES = {
 }
 
 
-# --- CHANNELS / ASGI CONFIGURATION (REMOVED) ---
-# ASGI_APPLICATION is no longer needed unless you add other ASGI services.
-# The CHANNEL_LAYERS configuration is removed.
-# REDIS_URL environment variable is no longer consumed by Django, but may be used 
-# elsewhere (e.g., dedicated caching).
+# --- CHANNELS / ASGI CONFIGURATION ---
+ASGI_APPLICATION = "backend.asgi.application"
+# Render currently runs a single free instance. In-memory channels are suitable
+# for initial functional verification only; use Redis for multi-instance production.
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 
 # --- APPLICATION DEFINITION ---
 
 INSTALLED_APPS = [
-    # 'daphne',         <-- REMOVED
+    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -86,7 +90,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    # 'channels',       <-- REMOVED
+    "channels",
     'ablog',
     'afollows',
     'amessages',
