@@ -55,7 +55,6 @@
       "tsconfigPaths": true
     },
     "extra": {
-      "EXPO_PUBLIC_API_URL": "https://pulse-w59d.onrender.com",
       "eas": {
         "projectId": "9fe88628-3ec4-4053-b080-f6a68dc64806"
       }
