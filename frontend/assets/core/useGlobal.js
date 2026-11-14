@@ -2400,9 +2400,11 @@ const useGlobal = create(
 
   chatsList: [],
   ChatsMembers: [],
+  activeGroupConnectionId: null,
   // MessagesTyping: null,
   chatsUsername: null,
   GroupChatList: (grpConnId, page = 0) => {
+    set({ activeGroupConnectionId: grpConnId });
     if (page === 0) {
       set((state) => ({
         chatsList: [],
