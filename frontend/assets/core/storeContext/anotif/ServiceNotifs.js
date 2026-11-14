@@ -151,12 +151,12 @@ class PollModel {
 
     // Poll-specific fields
     this.extra_data = data.extra_data || {};
-    this.title = this.extra_data.title || 'Poll';
-    this.poll_type = this.extra_data.poll_type || 'single'; // 'single' or 'multiple'
+    this.title = data.title || this.extra_data.title || 'Poll';
+    this.poll_type = data.poll_type || this.extra_data.poll_type || 'single';
     this.poll_sections = data.poll_sections || this.extra_data.poll_sections || [];
     this.unique_voter_count = data.unique_voter_count || 0;
     this.total_votes = data.total_votes || 0;
-    this.poll_description = this.extra_data.description || '';
+    this.poll_description = data.poll_question || this.extra_data.description || '';
 
     // Computed fields
     this.total_votes = this.getTotalVotes();
