@@ -641,11 +641,14 @@ export function subscribePulseRealtime({
   onUserNotification,
   onConnectionChange,
   onGroupChange,
+  onPostChange,
+  onBlogChange,
+  onServiceNotificationChange,
 }) {
   if (!supabase) return null;
 
   const channel = supabase
-    .channel(`pulse-realtime-${userId}`)
+    .channel(`pulse:user:${userId}`, { config: { private: true } })
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "direct_messages" },
@@ -681,6 +684,23 @@ export function subscribePulseRealtime({
       { event: "*", schema: "public", table: "group_members" },
       (payload) => onGroupChange?.(payload)
     )
+
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_posts" }, (payload) => onPostChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_post_likes" }, (payload) => onPostChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_post_interactions" }, (payload) => onPostChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_post_comments" }, (payload) => onPostChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_post_comment_likes" }, (payload) => onPostChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_post_comment_interactions" }, (payload) => onPostChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "blog_posts" }, (payload) => onBlogChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "blog_post_interactions" }, (payload) => onBlogChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "blog_post_shares" }, (payload) => onBlogChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_notifications" }, (payload) => onServiceNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_notification_likes" }, (payload) => onServiceNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_notification_interactions" }, (payload) => onServiceNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_notification_comments" }, (payload) => onServiceNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_notification_comment_likes" }, (payload) => onServiceNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_notification_comment_interactions" }, (payload) => onServiceNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "polls" }, (payload) => onServiceNotificationChange?.(payload))
     .subscribe((status, error) => {
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
         console.error("[Pulse Realtime] Channel status:", status, error?.message || "");
