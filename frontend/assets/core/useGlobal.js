@@ -383,9 +383,7 @@ const useGlobal = create(
                     },
                   }));
                   get().initializeUserData();
-              get().socketConnect();
                   get().socketConnect();
-            get().socketConnect();
                   get().initializeMessagePostUtils();
                   return { success: true, user };
                 }
@@ -451,6 +449,7 @@ const useGlobal = create(
               }));
               
               get().initializeUserData();
+              get().socketConnect();
               
               return { success: true, user };
             }
@@ -507,6 +506,7 @@ const useGlobal = create(
               }));
               
               get().initializeUserData();
+              get().socketConnect();
               
               return { success: true, user };
             }
@@ -540,6 +540,7 @@ const useGlobal = create(
           } catch (error) {
             console.error("Sign out error:", error);
           } finally {
+            await get().socketClose();
             await supabase.auth.signOut({ scope: "local" });
             await secure.remove("credentials");
             await secure.remove("tokens");
