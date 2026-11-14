@@ -1764,6 +1764,13 @@ const useGlobal = create(
           console.error("[Pulse Realtime] Service notification refresh failed:", error.message);
         }
       },
+      onAppNotificationChange: async () => {
+        try {
+          await get().appNotif(0);
+        } catch (error) {
+          console.error("[Pulse Realtime] App notification refresh failed:", error.message);
+        }
+      },
     });
 
     // Compatibility adapter for legacy call sites. It dispatches the chat and
