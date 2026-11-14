@@ -2485,7 +2485,9 @@ const useGlobal = create(
       await publishTyping(connectionId, false, false, get().user?.username);
     } finally {
       await unsubscribeTyping(connectionId, false);
-      if (get().activeMessageConnectionId === connectionId) set({ MessagesTyping: null });
+      if (get().activeMessageConnectionId === connectionId) {
+        set({ MessagesTyping: null, activeMessageConnectionId: null });
+      }
     }
   },
 
@@ -2559,7 +2561,9 @@ const useGlobal = create(
       await publishTyping(grpConnId, true, false, get().user?.username);
     } finally {
       await unsubscribeTyping(grpConnId, true);
-      if (get().activeGroupConnectionId === grpConnId) set({ GroupMessagesTyping: null });
+      if (get().activeGroupConnectionId === grpConnId) {
+        set({ GroupMessagesTyping: null, activeGroupConnectionId: null });
+      }
     }
   },
 
