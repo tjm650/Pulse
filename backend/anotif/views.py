@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+import json
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -61,7 +62,11 @@ class NotifViewSet(viewsets.ModelViewSet):
             update_type=request.data.get("update_type", "Update"),
             description=request.data.get("description", ""),
             image=request.FILES.get("image"),
-            extra_data=request.data.get("extra_data") or {},
+            extra_data=(
+                json.loads(request.data.get("extra_data"))
+                if isinstance(request.data.get("extra_data"), str)
+                else (request.data.get("extra_data") or {})
+            ),
         )
         return Response(self.get_serializer(notif).data, status=status.HTTP_201_CREATED)
 
@@ -98,7 +103,13 @@ class CommentViewSet(viewsets.ModelViewSet):
     parser_classes = (JSONParser,)
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        user = self.request.user
+        queryset = super().get_queryset().filter(
+            Q(post__service__public=True)
+            | Q(post__service__creator=user)
+            | Q(post__service__followers=user)
+            | Q(post__service__moderators=user)
+        ).distinct()
         post_id = self.request.query_params.get("post")
         if post_id:
             queryset = queryset.filter(post_id=post_id)
@@ -164,7 +175,11 @@ class PollViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = Poll.objects.select_related(
             "notification", "notification__service", "notification__sender"
         ).filter(
-            Q(visibility="public")
+            notification__service__is_active=True
+        ).filter(
+            Q(visibility="public", notification__service__public=True)
+            | Q(visibility="public", notification__service__creator=user)
+            | Q(visibility="public", notification__service__followers=user)
             | Q(visibility="followers", notification__service__followers=user)
             | Q(visibility="private", notification__sender=user)
             | Q(notification__service__creator=user)
