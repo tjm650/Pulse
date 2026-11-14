@@ -2473,6 +2473,15 @@ const useGlobal = create(
     );
   },
 
+  closeMessageTyping: async (connectionId) => {
+    try {
+      await publishTyping(connectionId, false, false, get().user?.username);
+    } finally {
+      await unsubscribeTyping(connectionId, false);
+      if (get().activeMessageConnectionId === connectionId) set({ MessagesTyping: null });
+    }
+  },
+
   messageRed: (connectionId, action = "red") => {
     const socket = get().socket;
     socket.send(
@@ -2536,6 +2545,15 @@ const useGlobal = create(
         typing,
       })
     );
+  },
+
+  closeGroupTyping: async (grpConnId) => {
+    try {
+      await publishTyping(grpConnId, true, false, get().user?.username);
+    } finally {
+      await unsubscribeTyping(grpConnId, true);
+      if (get().activeGroupConnectionId === grpConnId) set({ GroupMessagesTyping: null });
+    }
   },
 
   ////////////////////////////////////////// DiretoryList ///////////////////////////
