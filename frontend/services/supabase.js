@@ -5,9 +5,11 @@ const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL ||
   'https://xypngvumzhzhyvclfmyq.supabase.co';
 
-const supabasePublishableKey =
-  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  'sb_publishable_av4Zj6whC1qDEDW0iZN4Ow_sBkfp0WV';
+const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error('Missing Expo Supabase environment variables.');
+}
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
