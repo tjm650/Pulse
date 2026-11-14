@@ -54,8 +54,8 @@ class User(models.Model):
     is_suspended = models.BooleanField(default=False)
     suspension_reason = models.TextField(blank=True, default="")
     suspension_until = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = "username"
     REQUIRED_FIELDS = ["email"]
