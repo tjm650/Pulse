@@ -1651,19 +1651,6 @@ const useGlobal = create(
       return { success: false, error: "Not authenticated" };
     }
 
-    if (!supabase) {
-      console.info("[Pulse Realtime] Supabase is not configured; messaging and Realtime are disabled in this environment.");
-      set({
-        realtimeChannel: null,
-        socket: null,
-        ConnectList: [],
-        GroupConnectList: [],
-        usernotifList: [],
-        usernotifListUnread: [],
-      });
-      return { success: true, disabled: true };
-    }
-
     const existingChannel = get().realtimeChannel;
     if (existingChannel) {
       await supabase?.removeChannel(existingChannel);
