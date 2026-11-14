@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from api.serializers import CommunityDirectorySerializer, PublicPublicUserSerializer
+from api.serializers import CommunityDirectorySerializer, PublicUserSerializer
 from .models import Bloger
 
 
