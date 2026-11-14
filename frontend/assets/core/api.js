@@ -2,14 +2,11 @@ import axios from "axios";
 import secure from "./secure";
 import { supabase } from "@/services/supabase";
 
-import Constants from 'expo-constants';
-
-// export const ADDRESS = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL;
-// export const ADDRESS = "localhost:8000";
-export const ADDRESS = 'community-production-74a3.up.railway.app'
+export const ADDRESS = process.env.EXPO_PUBLIC_API_HOST || "localhost:8000";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || `http://${ADDRESS}`;
 
 const api = axios.create({
-  baseURL: "http://" + ADDRESS,
+  baseURL: API_BASE_URL,
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
@@ -46,7 +43,7 @@ api.interceptors.response.use(
       try {
         const tokens = await secure.get("tokens");
         if (tokens?.refresh) {
-          const response = await axios.post(`http://${ADDRESS}/api/token/refresh/`, {
+          const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
             refresh: tokens.refresh,
           });
 
