@@ -88,6 +88,8 @@ REST_FRAMEWORK = {
 
 DATABASE_URL = config("DATABASE_URL")
 
+DATABASE_ROUTERS = ["backend.dbrouters.SupabaseSchemaRouter"]
+
 DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL,
