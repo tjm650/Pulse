@@ -24,11 +24,65 @@ async function getProfiles(userIds = []) {
   return new Map((data || []).map((profile) => [profile.id, profile]));
 }
 
-function mapDirectMessage(row, profiles, currentUserId) {
+async function getSignedImageUrl(path) {
+  if (!path) return null;
+  const { data, error } = await supabase.storage
+    .from("pulse-message-media")
+    .createSignedUrl(path, 60 * 60);
+  if (error) {
+    console.warn("[Pulse Realtime] Could not sign message image:", error.message);
+    return null;
+  }
+  return data?.signedUrl || null;
+}
+
+function decodeBase64(value) {
+  const base64 = String(value || "")
+    .replace(/^data:[^,]*;base64,/i, "")
+    .replace(/\\s/g, "");
+  if (!base64 || base64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
+    throw new Error("The selected image is not valid base64 data.");
+  }
+
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  const bytes = new Uint8Array((base64.length * 3) / 4 - padding);
+  let buffer = 0;
+  let bits = 0;
+  let offset = 0;
+
+  for (const character of base64.replace(/=+$/, "")) {
+    buffer = (buffer << 6) | alphabet.indexOf(character);
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes[offset++] = (buffer >> bits) & 0xff;
+    }
+  }
+  return bytes;
+}
+
+function getImageContentType(filename) {
+  const extension = String(filename || "").split(".").pop().toLowerCase();
+  const types = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+  };
+  const contentType = types[extension];
+  if (!contentType) {
+    throw new Error("Only JPG, PNG, WEBP and GIF images are supported.");
+  }
+  return contentType;
+}
+
+async function mapDirectMessage(row, profiles, currentUserId) {
   return {
     ...row,
     created: row.created_at,
-    image: row.image_path || null,
+    image: await getSignedImageUrl(row.image_path),
     sender: profiles.get(row.sender_id) || { id: row.sender_id },
     is_me: row.sender_id === currentUserId,
   };
@@ -74,8 +128,10 @@ export async function getDirectMessages(connectionId, page = 0) {
     otherUserId,
     ...(rows || []).map((row) => row.sender_id),
   ]);
-  const messages = (rows || []).slice(0, pageSize).map((row) =>
-    mapDirectMessage(row, profiles, userId)
+  const messages = await Promise.all(
+    (rows || []).slice(0, pageSize).map((row) =>
+      mapDirectMessage(row, profiles, userId)
+    )
   );
 
   return {
@@ -126,7 +182,7 @@ export async function getDirectConnections() {
       connect,
       preview: latest?.description || "",
       preview_red: latest?.red ?? false,
-      image: latest?.image_path || null,
+      image: latest?.image_path ? null : null,
       updated: latest?.created_at || connection.updated_at,
     };
   });
@@ -138,8 +194,31 @@ export async function sendDirectMessage(details) {
     throw new Error("Image messages need the secured Supabase Storage upload path, which is being configured separately. Text messages are available now.");
   }
   const message = String(details?.message || "");
-  if (!message.trim() || message.length > 10000) {
-    throw new Error("Enter a message of up to 10,000 characters.");
+  if ((!message.trim() && !details?.image) || message.length > 10000) {
+    throw new Error("Enter a message or attach an image. Text is limited to 10,000 characters.");
+  }
+
+  let imagePath = null;
+  if (details?.image) {
+    const filename = String(details.image.fileName || "message-image.jpg")
+      .split(/[\\/]/)
+      .pop()
+      .replace(/[^A-Za-z0-9._-]/g, "_");
+    const contentType = getImageContentType(filename);
+    const bytes = decodeBase64(details.image.base64);
+    if (bytes.byteLength > 5 * 1024 * 1024) {
+      throw new Error("Message images must be 5 MB or smaller.");
+    }
+
+    imagePath = `${details.connectionId}/${userId}/${Date.now()}-${filename}`;
+    const { error: uploadError } = await supabase.storage
+      .from("pulse-message-media")
+      .upload(imagePath, bytes, {
+        contentType,
+        cacheControl: "3600",
+        upsert: false,
+      });
+    if (uploadError) throw uploadError;
   }
 
   const { data, error } = await supabase
@@ -148,11 +227,17 @@ export async function sendDirectMessage(details) {
       connection_id: details.connectionId,
       sender_id: userId,
       description: message,
+      image_path: imagePath,
     })
     .select("id,connection_id,sender_id,image_path,red,description,created_at")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (imagePath) {
+      await supabase.storage.from("pulse-message-media").remove([imagePath]);
+    }
+    throw error;
+  }
   return data;
 }
 
