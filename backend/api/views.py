@@ -30,6 +30,7 @@ from .serializers import (
     AdminPostSerializer, AdminCommentSerializer, AdminMessageSerializer, AdminNotificationSerializer
 )
 from auserpost.models import Post, Comment
+from auserpost.serializers import PostSerializer
 from amessages.models import Message as MessageModel
 
 logger = logging.getLogger(__name__)
