@@ -453,7 +453,11 @@ export function subscribePulseRealtime({
       { event: "*", schema: "public", table: "group_members" },
       (payload) => onGroupChange?.(payload)
     )
-    .subscribe();
+    .subscribe((status, error) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.error("[Pulse Realtime] Channel status:", status, error?.message || "");
+      }
+    });
 
   return channel;
 }
