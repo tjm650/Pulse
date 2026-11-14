@@ -1862,6 +1862,7 @@ const useGlobal = create(
       realtimeChannel: null,
       socket: null,
       activeMessageConnectionId: null,
+      activeGroupConnectionId: null,
     });
   },
 
