@@ -71,28 +71,12 @@ class BlogSerializer(serializers.ModelSerializer):
         return values
 
     def get_user_interacted(self, obj):
-        selfuser = self.context["user"]
-
-        values = obj.interactions.all()
-        for v in values:
-            if selfuser == v:
-                val = True
-                return val
-            elif selfuser != v:
-                return None
-        return
+        user = self.context.get("user")
+        return bool(user and user.is_authenticated and obj.interactions.filter(pk=user.pk).exists())
 
     def get_user_shared(self, obj):
-        selfuser = self.context["user"]
-
-        values = obj.shared.all()
-        for v in values:
-            if selfuser == v:
-                val = True
-                return val
-            elif selfuser != v:
-                return None
-        return
+        user = self.context.get("user")
+        return bool(user and user.is_authenticated and obj.shared.filter(pk=user.pk).exists())
 
     def get_total_interactions_count(self, obj):
         interactions = obj.interactions.all().count()
