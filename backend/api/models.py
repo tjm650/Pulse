@@ -14,91 +14,83 @@ def upload_images(instance, filename):
         return path
 
 
-class User(AbstractUser):
-    # Enhanced user fields
-    first_name = models.CharField(max_length=100, validators=[MinLengthValidator(2)])
-    last_name = models.CharField(max_length=100, validators=[MinLengthValidator(2)])
-    directory_status1 = models.CharField(max_length=100)
-    bio = models.TextField(max_length=500, blank=True)
-    profession = models.CharField(max_length=100, blank=True)
-    prof_initial = models.CharField(max_length=100, blank=True)
-    program = models.CharField(max_length=100, blank=True)
-    service_name = models.CharField(max_length=100, blank=True)
+class User(models.Model):
+    """
+    Application profile linked to a Supabase Auth identity.
+    Supabase Auth owns credentials; this model only maps public.profiles.
+    """
+    id = models.UUIDField(primary_key=True, editable=False)
+    username = models.CharField(max_length=100, unique=True)
+    email = models.EmailField(max_length=254)
+    first_name = models.CharField(max_length=100, validators=[MinLengthValidator(2)], blank=True)
+    last_name = models.CharField(max_length=100, validators=[MinLengthValidator(2)], blank=True)
+    directory_status1 = models.CharField(max_length=100, blank=True, null=True)
+    bio = models.CharField(max_length=500, blank=True, default="")
+    profession = models.CharField(max_length=100, blank=True, default="")
+    prof_initial = models.CharField(max_length=100, blank=True, default="")
+    program = models.CharField(max_length=100, blank=True, default="")
+    service_name = models.CharField(max_length=100, blank=True, default="")
     agreement = models.BooleanField(default=False)
     market_agreement = models.BooleanField(default=False)
     verified = models.BooleanField(default=False)
-    
-    # Enhanced contact and location
-    cell = models.CharField(
-        max_length=20, 
-        validators=[RegexValidator(r'^\+?1?\d{9,15}$')],
-        blank=True
-    )
-    location = models.CharField(max_length=100, blank=True)
-    website = models.URLField(blank=True)
-    
-    # Enhanced profile images
-    profile_image = models.ImageField(
-        upload_to=upload_images,
-        null=True,
-        blank=True
-    )
-    coverImage = models.ImageField(
-        upload_to=upload_images,
-        null=True,
-        blank=True
-    )
-    
-    # New fields for enhanced features
+    cell = models.CharField(max_length=20, blank=True, default="")
+    location = models.CharField(max_length=100, blank=True, default="")
+    website = models.TextField(blank=True, default="")
+    profile_image = models.ImageField(upload_to=upload_images, null=True, blank=True, db_column="profile_image_path")
+    coverImage = models.ImageField(upload_to=upload_images, null=True, blank=True, db_column="cover_image_path")
     is_online = models.BooleanField(default=False)
     last_seen = models.DateTimeField(default=timezone.now)
     notification_preferences = models.JSONField(default=dict)
     privacy_settings = models.JSONField(default=dict)
-    theme_preference = models.CharField(
-        max_length=10, 
-        choices=[('light', 'Light'), ('dark', 'Dark'), ('auto', 'Auto')],
-        default='auto'
-    )
-    language = models.CharField(max_length=10, default='en')
-    timezone = models.CharField(max_length=50, default='UTC')
-    
-    # Analytics and engagement
+    theme_preference = models.CharField(max_length=10, choices=[("light", "Light"), ("dark", "Dark"), ("auto", "Auto")], default="auto")
+    language = models.CharField(max_length=10, default="en")
+    timezone = models.CharField(max_length=50, default="UTC")
     total_posts = models.PositiveIntegerField(default=0)
     total_followers = models.PositiveIntegerField(default=0)
     total_following = models.PositiveIntegerField(default=0)
     reputation_score = models.PositiveIntegerField(default=0)
-    
-    # Account status
     is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
     is_suspended = models.BooleanField(default=False)
-    suspension_reason = models.TextField(blank=True)
+    suspension_reason = models.TextField(blank=True, default="")
     suspension_until = models.DateTimeField(null=True, blank=True)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    USERNAME_FIELD = "username"
+    REQUIRED_FIELDS = ["email"]
+
     class Meta:
-        db_table = 'users'
-        indexes = [
-            models.Index(fields=['username']),
-            models.Index(fields=['email']),
-            models.Index(fields=['is_online']),
-            models.Index(fields=['created_at']),
-        ]
-    
+        db_table = "profiles"
+        managed = False
+
     def __str__(self):
         return f"{self.username} ({self.first_name} {self.last_name})"
-    
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
-    
+        return f"{self.first_name} {self.last_name}".strip()
+
     @property
     def is_suspended_now(self):
         if self.is_suspended and self.suspension_until:
             return timezone.now() < self.suspension_until
         return self.is_suspended
 
+    def has_perm(self, perm, obj=None):
+        return self.is_active and self.is_staff
+
+    def has_module_perms(self, app_label):
+        return self.is_active and self.is_staff
 
 class UserPreference(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
