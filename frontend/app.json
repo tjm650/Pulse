@@ -23,9 +23,11 @@
       "output": "static"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "tinotendajmuyambo.pulse.com"
     },
     "android": {
+      "package": "tinotendajmuyambo.pulse.com",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/logo.png"
