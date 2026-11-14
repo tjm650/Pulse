@@ -1615,9 +1615,13 @@ const useGlobal = create(
       .replace(/^https:/i, "wss:")
       .replace(/^http:/i, "ws:")
       .replace(/\/+$/, "");
-    const url = `${websocketBase}/api/?token=${encodeURIComponent(tokens.access)}`;
+    const url = `${websocketBase}/api/`;
 
-    const socket = new WebSocket(url);
+    const socket = new WebSocket(url, [], {
+      headers: {
+        Authorization: `Bearer ${tokens.access}`,
+      },
+    });
     socket.onopen = () => {
       utils.log("socket.open");
 
