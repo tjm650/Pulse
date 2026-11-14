@@ -404,6 +404,7 @@ export async function getUserNotifications(unreadOnly = false) {
 }
 
 export async function markUserNotificationRead(notificationId) {
+  await requireUserId();
   const { error } = await supabase
     .from("user_notifications")
     .update({ is_read: true })
