@@ -1728,7 +1728,12 @@ const useGlobal = create(
               break;
             }
             case "message.send": {
-              await sendDirectMessage(event);
+              await sendDirectMessage({
+                ...event,
+                image: event.imageBase64
+                  ? { base64: event.imageBase64, fileName: event.imageFilename }
+                  : null,
+              });
               break;
             }
             case "message.red": {
@@ -1783,22 +1788,25 @@ const useGlobal = create(
       socket: realtimeAdapter,
     });
 
-    try {
-      const [connections, groups, allNotifications, unreadNotifications] = await Promise.all([
+    const [connections, groups, allNotifications, unreadNotifications] =
+      await Promise.allSettled([
         getDirectConnections(),
         getGroupConnections(),
         getUserNotifications(false),
         getUserNotifications(true),
       ]);
-      set({
-        ConnectList: connections,
-        GroupConnectList: groups,
-        usernotifList: allNotifications,
-        usernotifListUnread: unreadNotifications,
-      });
-    } catch (error) {
-      console.error("[Pulse Realtime] Initial data load failed:", error.message);
-    }
+    set({
+      ConnectList: connections.status === "fulfilled" ? connections.value : [],
+      GroupConnectList: groups.status === "fulfilled" ? groups.value : [],
+      usernotifList: allNotifications.status === "fulfilled" ? allNotifications.value : [],
+      usernotifListUnread:
+        unreadNotifications.status === "fulfilled" ? unreadNotifications.value : [],
+    });
+    [connections, groups, allNotifications, unreadNotifications]
+      .filter((result) => result.status === "rejected")
+      .forEach((result) =>
+        console.error("[Pulse Realtime] Initial data load failed:", result.reason?.message)
+      );
 
     return { success: true };
   },
