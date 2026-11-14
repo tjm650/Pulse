@@ -1698,7 +1698,7 @@ const useGlobal = create(
         }
       },
       onGroupMessage: async (payload) => {
-        if (!payload?.new?.id || payload.eventType === "DELETE") return;
+        if (!payload?.new?.id || payload.eventType !== "INSERT") return;
         try {
           const result = await getGroupMessages(payload.new.connection_id, 0);
           const message = result.grp_messages.find((item) => item.id === payload.new.id);
