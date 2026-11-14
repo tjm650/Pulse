@@ -66,6 +66,53 @@ class NotifViewSet(viewsets.ModelViewSet):
             return Response({"detail": "extra_data must be a JSON object."}, status=400)
 
         update_type = request.data.get("update_type", "Update")
+        poll_data = extra_data.get("poll") if isinstance(extra_data.get("poll"), dict) else extra_data
+        poll_kwargs = None
+        if str(update_type).lower() == "poll":
+            title = poll_data.get("title") or "Community Poll"
+            question = poll_data.get("poll_question") or poll_data.get("description") or request.data.get("description", "")
+            sections = poll_data.get("poll_sections") or []
+            poll_type = poll_data.get("poll_type", "single")
+            category = poll_data.get("category", "general")
+            visibility = poll_data.get("visibility", "public")
+            try:
+                duration_hours = int(poll_data.get("duration_hours") or 24)
+                reminder_frequency_hours = int(poll_data.get("reminder_frequency_hours") or 12)
+            except (TypeError, ValueError):
+                return Response({"detail": "Poll duration settings must be whole numbers."}, status=400)
+            if not question or not isinstance(sections, list) or not sections:
+                return Response(
+                    {"detail": "Polls require a question and at least one poll section."},
+                    status=400,
+                )
+            if poll_type not in {"single", "multiple"}:
+                return Response({"detail": "Invalid poll_type."}, status=400)
+            if category not in {choice[0] for choice in Poll.POLL_CATEGORIES}:
+                return Response({"detail": "Invalid poll category."}, status=400)
+            if visibility not in {"public", "followers", "private"}:
+                return Response({"detail": "Invalid poll visibility."}, status=400)
+            if duration_hours < 0 or reminder_frequency_hours < 0:
+                return Response({"detail": "Poll durations cannot be negative."}, status=400)
+            poll_kwargs = {
+                "title": title,
+                "poll_question": question,
+                "poll_type": poll_type,
+                "category": category,
+                "visibility": visibility,
+                "poll_sections": sections,
+                "images": poll_data.get("images") or [],
+                "settings": poll_data.get("settings") or {},
+                "duration_hours": duration_hours,
+                "allow_comments": bool(poll_data.get("allow_comments", True)),
+                "allow_multiple_votes": bool(poll_data.get("allow_multiple_votes", False)),
+                "anonymous_voting": bool(poll_data.get("anonymous_voting", False)),
+                "hide_results_until_expired": bool(poll_data.get("hide_results_until_expired", False)),
+                "show_results_after_vote": bool(poll_data.get("show_results_after_vote", True)),
+                "send_reminders": bool(poll_data.get("send_reminders", True)),
+                "reminder_frequency_hours": reminder_frequency_hours,
+                "tags": poll_data.get("tags") or [],
+            }
+
         with transaction.atomic():
             notif = Notif.objects.create(
                 sender=request.user,
@@ -75,36 +122,8 @@ class NotifViewSet(viewsets.ModelViewSet):
                 image=request.FILES.get("image"),
                 extra_data=extra_data,
             )
-            poll_data = extra_data.get("poll") if isinstance(extra_data.get("poll"), dict) else extra_data
-            if str(update_type).lower() == "poll":
-                title = poll_data.get("title") or "Community Poll"
-                question = poll_data.get("poll_question") or poll_data.get("description") or request.data.get("description", "")
-                sections = poll_data.get("poll_sections") or []
-                if not question or not sections:
-                    return Response(
-                        {"detail": "Polls require a question and at least one poll section."},
-                        status=400,
-                    )
-                Poll.objects.create(
-                    notification=notif,
-                    title=title,
-                    poll_question=question,
-                    poll_type=poll_data.get("poll_type", "single"),
-                    category=poll_data.get("category", "general"),
-                    visibility=poll_data.get("visibility", "public"),
-                    poll_sections=sections,
-                    images=poll_data.get("images") or [],
-                    settings=poll_data.get("settings") or {},
-                    duration_hours=int(poll_data.get("duration_hours") or 24),
-                    allow_comments=bool(poll_data.get("allow_comments", True)),
-                    allow_multiple_votes=bool(poll_data.get("allow_multiple_votes", False)),
-                    anonymous_voting=bool(poll_data.get("anonymous_voting", False)),
-                    hide_results_until_expired=bool(poll_data.get("hide_results_until_expired", False)),
-                    show_results_after_vote=bool(poll_data.get("show_results_after_vote", True)),
-                    send_reminders=bool(poll_data.get("send_reminders", True)),
-                    reminder_frequency_hours=int(poll_data.get("reminder_frequency_hours") or 12),
-                    tags=poll_data.get("tags") or [],
-                )
+            if poll_kwargs is not None:
+                Poll.objects.create(notification=notif, **poll_kwargs)
 
         response_data = self.get_serializer(notif).data
         if str(update_type).lower() == "poll":
