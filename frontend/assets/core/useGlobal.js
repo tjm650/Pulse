@@ -3002,22 +3002,9 @@ const useGlobal = create(
   },
 
   // Enhanced post creation with utilities integration
-  createPostWithUtils: (postData) => {
-    const socket = get().socket;
-    if (!socket) return;
-
-    const { description, image, userId, utils = {} } = postData;
-
-    socket.send(
-      JSON.stringify({
-        source: "post.create.with_utils",
-        userId,
-        description,
-        image,
-        utils,
-        timestamp: new Date().toISOString(),
-      })
-    );
+  createPostWithUtils: async (postData) => {
+    const { description, image } = postData || {};
+    return get().postSend({ description, image });
   },
 
   // Quercus AI enhanced message processing
