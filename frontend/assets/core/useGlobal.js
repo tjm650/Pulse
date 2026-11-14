@@ -16,26 +16,6 @@ import { AppSearches } from "./storeContext/asearch/asearch";
 import { UserNotifs } from "./storeContext/ausernotif/userNotif";
 import { UserPosts } from "./storeContext/auserpost/UserPosts";
 
-// Quercus AI Handlers
-import {
-  responseQuercusAI,
-  responseQuercusConversationHistory,
-  responseQuercusConversationList,
-  responseQuercusConversationCreated,
-  responseQuercusCampusInfo,
-  responseQuercusStudyPlan,
-  responseQuercusCareerGuidance,
-  responseQuercusSettingsUpdated,
-  responseQuercusTyping,
-  responseQuercusError,
-  responseQuercusImageAnalysis,
-  responseQuercusDocumentAnalysis,
-  responseQuercusConversationSummary,
-  responseQuercusConversationInsights,
-  responseQuercusAnalytics,
-  responseQuercusSuggestions,
-} from "@/assets/common/core/storeContext/Quercus/Quercus";
-
 //----------------------------------------
 // Socket receive message handlers
 //----------------------------------------
@@ -915,50 +895,7 @@ const useGlobal = create(
   },
 
   // Initialize message-post utilities
-  initializeMessagePostUtils: async () => {
-    try {
-      // Load utilities from Quercus.js
-          const QuercusUtils = require('@/assets/common/utils/Quercus');
-
-      // Initialize number formatting utility
-      if (QuercusUtils.formatNumber) {
-        set((state) => ({
-          content: {
-            ...state.content,
-            utils: {
-              ...state.content.utils,
-              formatNumber: QuercusUtils.formatNumber,
-            },
-          },
-        }));
-      }
-
-      // Initialize AI response templates
-      if (QuercusUtils.aiResponseTemplates) {
-        set((state) => ({
-          quercusAI: {
-            ...state.quercusAI,
-            responseTemplates: QuercusUtils.aiResponseTemplates,
-          },
-        }));
-      }
-
-      // Initialize campus AI prompts
-      if (QuercusUtils.campusAIPrompts) {
-        set((state) => ({
-          quercusAI: {
-            ...state.quercusAI,
-            campusPrompts: QuercusUtils.campusAIPrompts,
-          },
-        }));
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Initialize message-post utils error:', error);
-      return { success: false, error: error.message };
-    }
-  },
+  initializeMessagePostUtils: async () => ({ success: true }),
 
   //----------------------------------------
   // Missing Methods for Backward Compatibility
@@ -1449,21 +1386,8 @@ const useGlobal = create(
 
   // Message formatting utilities
   formatMessageContent: (content, type = 'text') => {
-    try {
-      const QuercusUtils = require('@/assets/common/utils/Quercus');
-
-      switch (type) {
-        case 'number':
-          return QuercusUtils.formatNumber ? QuercusUtils.formatNumber(content) : content;
-        case 'list':
-          return Array.isArray(content) ? content.join(', ') : content;
-        default:
-          return content;
-      }
-    } catch (error) {
-      console.error('Message formatting error:', error);
-      return content;
-    }
+    if (type === 'list') return Array.isArray(content) ? content.join(', ') : content;
+    return content;
   },
 
   // Auto-save message drafts
@@ -1683,26 +1607,6 @@ const useGlobal = create(
         responseAccommodations,
         responseTxAgents,
 
-        // Quercus AI Methods
-       
-
-        responseQuercusAI,
-        responseQuercusConversationHistory,
-        responseQuercusConversationList,
-        responseQuercusConversationCreated,
-        responseQuercusCampusInfo,
-        responseQuercusStudyPlan,
-        responseQuercusCareerGuidance,
-        responseQuercusSettingsUpdated,
-        responseQuercusTyping,
-        responseQuercusError,
-        responseQuercusImageAnalysis,
-        responseQuercusDocumentAnalysis,
-        responseQuercusConversationSummary,
-        responseQuercusConversationInsights,
-        responseQuercusAnalytics,
-        responseQuercusSuggestions,
-
   //----------------------------------------
         // WebSocket for Real-Time Updates
   //----------------------------------------
@@ -1866,13 +1770,6 @@ const useGlobal = create(
       socket.send(
         JSON.stringify({
           source: "analytics.init",
-        })
-      );
-
-      // Initialize Quercus AI integration
-      socket.send(
-        JSON.stringify({
-          source: "quercus.integration.init",
         })
       );
     };
@@ -2072,24 +1969,6 @@ const useGlobal = create(
         }
       }));
     },
-
-    // Quercus AI Response Handlers
-    "quercus.ai_response": responseQuercusAI,
-    "quercus.conversation_history": responseQuercusConversationHistory,
-    "quercus.conversation_list": responseQuercusConversationList,
-    "quercus.conversation_created": responseQuercusConversationCreated,
-    "quercus.campus_info": responseQuercusCampusInfo,
-    "quercus.study_plan": responseQuercusStudyPlan,
-    "quercus.career_guidance": responseQuercusCareerGuidance,
-    "quercus.settings_updated": responseQuercusSettingsUpdated,
-    "quercus.typing": responseQuercusTyping,
-    "quercus.error": responseQuercusError,
-    "quercus.image_analysis": responseQuercusImageAnalysis,
-    "quercus.document_analysis": responseQuercusDocumentAnalysis,
-    "quercus.conversation_summary": responseQuercusConversationSummary,
-    "quercus.conversation_insights": responseQuercusConversationInsights,
-    "quercus.analytics": responseQuercusAnalytics,
-    "quercus.suggestions": responseQuercusSuggestions,
 
     // Quercus AI Response Handlers
     "quercus.ai_response": (set, get, data) => {
