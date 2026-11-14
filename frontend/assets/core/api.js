@@ -3,8 +3,11 @@ import Constants from "expo-constants";
 import secure from "./secure";
 import { supabase } from "@/services/supabase";
 
-export const ADDRESS = process.env.EXPO_PUBLIC_API_HOST || "localhost:8000";
-export const API_BASE_URL = Constants.expoConfig?.extra?.EXPO_API_URL || `http://${ADDRESS}`;
+const DEFAULT_API_URL = "https://pulse-w59d.onrender.com";
+const configuredApiUrl =
+  Constants.expoConfig?.extra?.EXPO_API_URL || process.env.EXPO_API_URL;
+
+export const API_BASE_URL = (configuredApiUrl || DEFAULT_API_URL).replace(/\/+$/, "");
 
 const api = axios.create({
   baseURL: API_BASE_URL,
