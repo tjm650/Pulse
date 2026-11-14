@@ -39,7 +39,7 @@ async function getSignedImageUrl(path) {
 function decodeBase64(value) {
   const base64 = String(value || "")
     .replace(/^data:[^,]*;base64,/i, "")
-    .replace(/\\s/g, "");
+    .replace(/\s/g, "");
   if (!base64 || base64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
     throw new Error("The selected image is not valid base64 data.");
   }
