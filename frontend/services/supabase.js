@@ -7,7 +7,14 @@ const supabaseUrl = Constants.expoConfig?.extra?.EXPO_SUPABASE_URL;
 const supabasePublishableKey = Constants.expoConfig?.extra?.EXPO_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error('Missing Expo Supabase environment variables.');
+  const missing = [
+    !supabaseUrl && 'EXPO_PUBLIC_SUPABASE_URL',
+    !supabasePublishableKey && 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  ].filter(Boolean);
+
+  throw new Error(
+    `Missing Expo Supabase environment variables: ${missing.join(', ')}. Set them in frontend/.env or the Codespaces environment, then restart Expo.`
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
