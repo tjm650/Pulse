@@ -23,10 +23,7 @@ AUTH_USER_MODEL = "api.User"
 
 # Supabase Auth is the identity provider; Django validates its access tokens.
 SUPABASE_URL = config("SUPABASE_URL", default="https://xypngvumzhzhyvclfmyq.supabase.co")
-SUPABASE_PUBLISHABLE_KEY = config(
-    "SUPABASE_PUBLISHABLE_KEY",
-    default="sb_publishable_av4Zj6whC1qDEDW0iZN4Ow_sBkfp0WV",
-)
+SUPABASE_PUBLISHABLE_KEY = config("SUPABASE_PUBLISHABLE_KEY")
 
 # CORS Settings (unchanged)
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
