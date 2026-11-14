@@ -1324,11 +1324,9 @@ const useGlobal = create(
         message: message,
       });
 
-      // Track analytics
+      // Track analytics through the existing monetization store.
       if (get().user) {
-        import('@/assets/common/core/storeContext/amonetization/analytics').then(({ trackPageVisit }) => {
-          trackPageVisit('message_sent', conversationId, 'message');
-        });
+        await MonetizationStore.trackPageVisit(set, get, 'message_sent', conversationId, 'message');
       }
 
       return { success: true };
@@ -1353,11 +1351,9 @@ const useGlobal = create(
         image,
       });
 
-      // Track analytics
+      // Track analytics through the existing monetization store.
       if (get().user) {
-        import('@/assets/common/core/storeContext/amonetization/analytics').then(({ trackPageVisit }) => {
-          trackPageVisit('post_created', userId, 'post');
-        });
+        await MonetizationStore.trackPageVisit(set, get, 'post_created', userId, 'post');
       }
 
       // Auto-suggest Quercus AI for study-related posts
@@ -1874,17 +1870,13 @@ const useGlobal = create(
         },
 
         "message.analytics.track": (set, get, data) => {
-          // Track message analytics
-          import('@/assets/common/core/storeContext/amonetization/analytics').then(({ trackPageVisit }) => {
-            trackPageVisit('message_interaction', data.conversation_id, 'message');
-          });
+          // Track message analytics through the existing monetization store.
+          MonetizationStore.trackPageVisit(set, get, 'message_interaction', data.conversation_id, 'message');
         },
 
         "post.analytics.track": (set, get, data) => {
-          // Track post analytics
-          import('@/assets/common/core/storeContext/amonetization/analytics').then(({ trackPageVisit }) => {
-            trackPageVisit('post_interaction', data.post_id, 'post');
-          });
+          // Track post analytics through the existing monetization store.
+          MonetizationStore.trackPageVisit(set, get, 'post_interaction', data.post_id, 'post');
         },
   // monetization
     "monetization.marketing": MonetizationStore.responseMarketing,
