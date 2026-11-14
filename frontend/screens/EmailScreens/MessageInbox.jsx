@@ -243,6 +243,8 @@ const MesssageInbox = ({ route }) => {
     };
 
     messageSend(details);
+    messageType(connectionId, false);
+    setIsTyping(false);
     setMessage("");
     setImage(null);
     setImage1(null);
@@ -256,7 +258,7 @@ const MesssageInbox = ({ route }) => {
 
     if (!isTyping) {
       setIsTyping(true);
-      messageType(connect.username);
+      messageType(connectionId, true);
     }
 
     // Clear existing timeout
@@ -267,6 +269,7 @@ const MesssageInbox = ({ route }) => {
     // Set new timeout
     const timeout = setTimeout(() => {
       setIsTyping(false);
+      messageType(connectionId, false);
     }, 2000);
 
     setTypingTimeout(timeout);
@@ -429,8 +432,9 @@ const MesssageInbox = ({ route }) => {
       if (typingTimeout) {
         clearTimeout(typingTimeout);
       }
+      messageType(connectionId, false);
     };
-  }, [typingTimeout]);
+  }, [typingTimeout, connectionId]);
 
   return (
     <SafeAreaView
@@ -489,8 +493,10 @@ const MesssageInbox = ({ route }) => {
             showsVerticalScrollIndicator={false}
           />
 
-          {/* Typing Indicator */}
-          {/* <TypingIndicator isTyping={isTyping} username={connect.name} /> */}
+          <TypingIndicator
+            isTyping={Boolean(MessagesTyping)}
+            username={MessagesTyping?.username || connect.name}
+          />
         </View>
 
         {/* Enhanced Input Message */}
