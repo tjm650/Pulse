@@ -18,10 +18,10 @@ function responseMessageList(set, get, data) {
     );
     if (ConnectIndex >= 0) {
       const item = ConnectList[ConnectIndex];
-      item.preview = data.message.description;
+      item.preview = data.message.description || (data.message.image ? "Photo" : "");
       item.updated = data.message.created;
       item.preview_red = data.message.red;
-      item.image ? item.image = data.message.image : null;
+      item.image = data.message.image || null;
       ConnectList.splice(ConnectIndex, 1);
       ConnectList.unshift(item);
       set((state) => ({
