@@ -20,6 +20,7 @@ SUPABASE_MANAGED_APPS = {
     "community",
     "quercus",
     "rest_framework_simplejwt",
+    "token_blacklist",
 }
 
 
