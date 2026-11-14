@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
 from api.models import Notification
 from api.permissions import IsOwnerOrReadOnly
@@ -17,6 +18,11 @@ class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     parser_classes = (MultiPartParser, FormParser)
+
+    def get_permissions(self):
+        if getattr(self, "action", None) in {"like", "interact"}:
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -75,6 +81,11 @@ class CommentViewSet(viewsets.ModelViewSet):
     )
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+
+    def get_permissions(self):
+        if getattr(self, "action", None) in {"like", "interact"}:
+            return [IsAuthenticated()]
+        return super().get_permissions()
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
@@ -90,7 +101,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        post = Post.objects.get(pk=self.request.data.get("post"))
+        post = get_object_or_404(Post, pk=self.request.data.get("post"))
         serializer.save(sender=self.request.user, post=post)
         if post.sender_id != self.request.user.pk:
             Notification.objects.create(
