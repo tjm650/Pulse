@@ -117,6 +117,110 @@ function mapGroupMessage(row, profiles, currentUserId) {
   };
 }
 
+export async function getConnectionRequests() {
+  const userId = await requireUserId();
+  const { data: requests, error } = await supabase
+    .from("connections")
+    .select("id,sender_id,receiver_id,accepted,created_at")
+    .eq("receiver_id", userId)
+    .eq("accepted", false)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  const profiles = await getProfiles([
+    userId,
+    ...(requests || []).map((request) => request.sender_id),
+  ]);
+  return (requests || []).map((request) => ({
+    ...request,
+    sender: profiles.get(request.sender_id) || { id: request.sender_id },
+    receiver: profiles.get(request.receiver_id) || { id: request.receiver_id },
+  }));
+}
+
+async function findConnectionForUsername(username) {
+  const userId = await requireUserId();
+  const { data: target, error: profileError } = await supabase
+    .from("profiles")
+    .select("id,username")
+    .eq("username", username)
+    .maybeSingle();
+
+  if (profileError) throw profileError;
+  if (!target || target.id === userId) {
+    throw new Error("That user is unavailable for a connection request.");
+  }
+
+  const { data: connections, error } = await supabase
+    .from("connections")
+    .select("id,sender_id,receiver_id,accepted,created_at")
+    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+
+  if (error) throw error;
+  const existing = (connections || []).find(
+    (connection) =>
+      (connection.sender_id === userId && connection.receiver_id === target.id) ||
+      (connection.receiver_id === userId && connection.sender_id === target.id)
+  );
+  return { userId, target, existing };
+}
+
+export async function requestOrAcceptConnection(username) {
+  const { userId, target, existing } = await findConnectionForUsername(username);
+  if (existing?.accepted) return { status: "connected", connection: existing };
+
+  if (existing && existing.receiver_id === userId) {
+    const { data, error } = await supabase
+      .from("connections")
+      .update({ accepted: true })
+      .eq("id", existing.id)
+      .select("id,sender_id,receiver_id,accepted,created_at")
+      .single();
+    if (error) throw error;
+    return { status: "connected", connection: data };
+  }
+
+  if (existing) return { status: "pending_them", connection: existing };
+
+  const { data, error } = await supabase
+    .from("connections")
+    .insert({
+      sender_id: userId,
+      receiver_id: target.id,
+      accepted: false,
+    })
+    .select("id,sender_id,receiver_id,accepted,created_at")
+    .single();
+
+  if (error) throw error;
+  return { status: "pending_them", connection: data };
+}
+
+export async function acceptConnectionRequest(username) {
+  const { userId, target, existing } = await findConnectionForUsername(username);
+  if (!existing || existing.accepted || existing.receiver_id !== userId) {
+    throw new Error("There is no pending request from this user to accept.");
+  }
+  const { data, error } = await supabase
+    .from("connections")
+    .update({ accepted: true })
+    .eq("id", existing.id)
+    .select("id,sender_id,receiver_id,accepted,created_at")
+    .single();
+  if (error) throw error;
+  return { status: "connected", connection: data, target };
+}
+
+export async function deleteConnectionRequest(username) {
+  const { userId, existing } = await findConnectionForUsername(username);
+  if (!existing || existing.accepted) {
+    throw new Error("There is no pending connection request to remove.");
+  }
+  const { error } = await supabase.from("connections").delete().eq("id", existing.id);
+  if (error) throw error;
+  return { status: "not-connected", connection: existing };
+}
+
 export async function getDirectMessages(connectionId, page = 0) {
   const userId = await requireUserId();
   const { data: connection, error: connectionError } = await supabase
