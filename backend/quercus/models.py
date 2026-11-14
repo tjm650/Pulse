@@ -51,7 +51,7 @@ class QuercusMessage(models.Model):
 
 class QuercusSettings(models.Model):
     """Model for storing user AI preferences"""
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quercus_settings')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quercus_settings', primary_key=True)
     response_style = models.CharField(max_length=50, default='concise', choices=[
         ('concise', 'Concise'),
         ('detailed', 'Detailed'),
