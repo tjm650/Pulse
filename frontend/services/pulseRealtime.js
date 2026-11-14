@@ -4,6 +4,9 @@ const PROFILE_FIELDS =
   "id,username,first_name,last_name,bio,profession,profile_image_path,cover_image_path,verified,is_online,last_seen";
 
 async function requireUserId() {
+  if (!supabase) {
+    throw new Error("Supabase is not configured in this development environment. Messaging and Realtime features are unavailable.");
+  }
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user?.id) {
     throw new Error("Your Supabase session has expired. Please sign in again.");
@@ -416,6 +419,8 @@ export function subscribePulseRealtime({
   onConnectionChange,
   onGroupChange,
 }) {
+  if (!supabase) return null;
+
   const channel = supabase
     .channel(`pulse-realtime-${userId}`)
     .on(
