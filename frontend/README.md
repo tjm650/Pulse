@@ -17,7 +17,7 @@ The Supabase publishable key is intended for client applications. Never place a 
 
 ## Local development environment
 
-For GitHub Codespaces or local development, create `frontend/.env` from `frontend/.env.example` and enter the Supabase publishable key. The `.env` file is ignored by Git and must not be committed. Alternatively, define the same variables in the Codespaces environment.
+For GitHub Codespaces, no Supabase variables or production credentials are required just to launch the app. Supabase-dependent messaging and Realtime features remain unavailable until a Supabase URL and publishable key are configured in a trusted development environment. If live Supabase testing is needed, use a separate development Supabase project rather than production.
 
 After setting them, restart Metro from `frontend/`:
 
@@ -29,6 +29,6 @@ npx expo start --dev-client --tunnel --clear
 
 The app config passes `EXPO_API_URL`, `EXPO_SUPABASE_URL`, and `EXPO_SUPABASE_PUBLISHABLE_KEY` into Expo runtime `extra` values. The API client and Supabase client read those runtime values. These names intentionally do not use the `EXPO_PUBLIC_` prefix.
 
-For EAS Build/Update, define all three variables in the appropriate Expo project EAS environments (for example, `development` and `production`). For GitHub Codespaces, define them as Codespaces secrets/environment variables so the Metro process receives them. EAS-hosted variables are not automatically injected into a separately running Codespace.
+For EAS Build/Update, define the required variables in the appropriate Expo project EAS environments (for example, `development` and `production`). EAS-hosted variables are not automatically injected into a separately running Codespace. Do not add production Supabase configuration to Codespaces.
 
-A local `frontend/.env` file is optional: it is a convenient way to provide the same values to local Metro. Copy `.env.example` to `.env` only if you are not supplying them through the platform environment. Never commit `.env`. The publishable key is designed for client use; database access must still be protected by Supabase Row Level Security. Never use the service-role key in the app.
+A local `frontend/.env` file is optional and is only needed when testing Supabase-backed features locally. Without the Supabase variables, the app starts with Supabase disabled; Supabase-backed messaging and Realtime operations show a configuration error if invoked. Never commit `.env`. The publishable key is designed for client use; database access must still be protected by Supabase Row Level Security. Never use the service-role key in the app.
