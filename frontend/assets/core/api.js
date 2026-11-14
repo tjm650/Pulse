@@ -61,6 +61,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
         // Clear invalid tokens
+        await supabase.auth.signOut();
         await secure.remove("tokens");
       }
     }
