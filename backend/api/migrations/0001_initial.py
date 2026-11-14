@@ -24,6 +24,8 @@ class Migration(migrations.Migration):
             name='User',
             fields=[
                 ('id', models.UUIDField(editable=False, primary_key=True, serialize=False)),
+                ('password', models.CharField(default='!', max_length=128, verbose_name='password')),
+                ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),
                 ('username', models.CharField(max_length=100, unique=True)),
                 ('email', models.EmailField(max_length=254)),
                 ('first_name', models.CharField(blank=True, max_length=100, validators=[django.core.validators.MinLengthValidator(2)])),
