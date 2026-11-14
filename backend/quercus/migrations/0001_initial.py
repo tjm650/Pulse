@@ -87,7 +87,6 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='QuercusSettings',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('response_style', models.CharField(choices=[('concise', 'Concise'), ('detailed', 'Detailed'), ('conversational', 'Conversational')], default='concise', max_length=50)),
                 ('auto_save', models.BooleanField(default=True)),
                 ('notifications_enabled', models.BooleanField(default=True)),
@@ -95,7 +94,7 @@ class Migration(migrations.Migration):
                 ('campus_updates', models.BooleanField(default=False)),
                 ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='quercus_settings', to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='quercus_settings', to=settings.AUTH_USER_MODEL)),
             ],
         ),
         migrations.CreateModel(
