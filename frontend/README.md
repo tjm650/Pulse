@@ -25,3 +25,11 @@ npx expo start --dev-client --tunnel --clear
 ```
 
 The app config maps the documented `EXPO_PUBLIC_*` names into Expo's runtime `extra` values and retains compatibility with the older `EXPO_SUPABASE_*` names.
+
+## Supabase environment variables
+
+The frontend reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` directly using Expo's supported `process.env.EXPO_PUBLIC_*` substitution. They must be present when the JavaScript bundle is created.
+
+For EAS Build/Update, define both variables in the Expo project's EAS environment (for example, the `development` and `production` environments). For GitHub Codespaces, define them as Codespaces secrets/environment variables so the Metro process receives them. EAS-hosted variables are not automatically injected into a separately running Codespace.
+
+A local `frontend/.env` file is optional: it is a convenient way to provide the same values to local Metro. Copy `.env.example` to `.env` only if you are not supplying them through the platform environment. Never commit `.env`. The publishable key is designed for client use; database access must still be protected by Supabase Row Level Security. Never use the service-role key in the app.
