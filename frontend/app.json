@@ -20,7 +20,7 @@
       "favicon": "./assets/logo.png",
       "bundler": "metro",
       "output": "static",
-      "baseUrl": "/Pulse/",
+      "baseUrl": "/Pulse/"
     },
     "ios": {
       "supportsTablet": true
@@ -49,7 +49,6 @@
       ],
       "expo-font"
     ],
-    "scheme": "pulse",
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true,
