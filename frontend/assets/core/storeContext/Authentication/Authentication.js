@@ -1,4 +1,4 @@
-  import secure from "../../../../../app/core/secure";
+  import secure from "../../secure";
   
   function Authenticate (set, get) {
     // console.log(`user ${user.username} login confirmed`);
