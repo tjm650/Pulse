@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from api.models import CommunityDirectory
-from api.serializers import CommunityDirectorySerializer, UserSerializer
+from api.serializers import CommunityDirectorySerializer, PublicUserSerializer
 from .models import Notif, Comment, Poll
 
 
@@ -41,7 +41,7 @@ class NotifSerializer(serializers.ModelSerializer):
         ]
 
     def get_sender(self, obj):
-        return UserSerializer(obj.sender).data
+        return PublicUserSerializer(obj.sender).data
 
     def get_service(self, obj):
         return CommunityDirectorySerializer(obj.service).data
@@ -52,7 +52,7 @@ class NotifSerializer(serializers.ModelSerializer):
         values = obj.likes.all()
         for v in values:
             # if v == selfuser:
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_likes_count(self, obj):
         selfuser = self.context["user"]
@@ -86,7 +86,7 @@ class NotifSerializer(serializers.ModelSerializer):
     def get_interactions(self, obj):
         values = obj.interactions.all()
         for v in values:
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_user_interacted(self, obj):
         selfuser = self.context["user"]
@@ -137,7 +137,7 @@ class CommentSerializer(serializers.ModelSerializer):
         ]
 
     def get_sender(self, obj):
-        return UserSerializer(obj.sender).data
+        return PublicUserSerializer(obj.sender).data
 
     def get_likes_count(self, obj):
         return obj.likes.all().count()
@@ -151,7 +151,7 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_interactions(self, obj):
         values = obj.interactions.all()
         for v in values:
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_interactions_count(self, obj):
         values = obj.interactions.all().count()
