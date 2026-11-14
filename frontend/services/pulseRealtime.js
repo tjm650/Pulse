@@ -205,7 +205,11 @@ export async function sendDirectMessage(details) {
       .pop()
       .replace(/[^A-Za-z0-9._-]/g, "_");
     const contentType = getImageContentType(filename);
-    const bytes = decodeBase64(details.image.base64);
+    const encodedImage = String(details.image.base64 || "");
+    if (encodedImage.length > 7100000) {
+      throw new Error("Message images must be 5 MB or smaller.");
+    }
+    const bytes = decodeBase64(encodedImage);
     if (bytes.byteLength > 5 * 1024 * 1024) {
       throw new Error("Message images must be 5 MB or smaller.");
     }
