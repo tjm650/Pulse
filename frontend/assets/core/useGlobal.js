@@ -361,54 +361,38 @@ const useGlobal = create(
           try {
             set({ appState: { ...get().appState, isLoading: true } });
             
-            const credentials = await secure.get("credentials");
             const tokens = await secure.get("tokens");
             
-            if (credentials && tokens) {
+            if (tokens?.access) {
               try {
                 const response = await api({
-                  method: "POST",
-                  url: "/api/signin",
-                  data: {
-                    username: credentials.username,
-                    password: credentials.password,
-                  },
+                  method: "GET",
+                  url: "/api/user/profile",
                 });
                 
                 if (response.status === 200) {
-                  const user = response.data.user;
-                  const newTokens = response.data.tokens;
-                  
-                  await secure.set("tokens", newTokens);
-                  
+                  const user = response.data;
                   set((state) => ({
                     initialized: true,
                     isAuthenticated: true,
                     user,
-                    tokens: newTokens,
+                    tokens,
                     theme: user.theme_preference || "light",
                     language: user.language || "en",
                     signUpComplete: user.first_name && true,
                     agreementChecked: user.agreement && true,
-                    appState: { 
-                      ...state.appState, 
+                    appState: {
+                      ...state.appState,
                       isLoading: false,
                       lastSync: new Date().toISOString()
                     },
                   }));
-                  
-                  // Initialize user-specific data
                   get().initializeUserData();
-
-                  // Initialize message-post utilities
                   get().initializeMessagePostUtils();
-
                   return { success: true, user };
                 }
               } catch (error) {
-                console.error("Token validation failed:", error);
-                // Clear invalid credentials
-                await secure.remove("credentials");
+                console.error("Supabase session validation failed:", error);
                 await secure.remove("tokens");
               }
             }
@@ -450,7 +434,11 @@ const useGlobal = create(
               const user = response.data.user;
               const tokens = response.data.tokens;
               
-              await secure.set("credentials", credentials);
+              if (response.data.confirmation_required) {
+                set((state) => ({ appState: { ...state.appState, isLoading: false } }));
+                return { success: false, error: response.data.message, confirmationRequired: true };
+              }
+
               await secure.set("tokens", tokens);
               
               set((state) => ({
@@ -552,7 +540,6 @@ const useGlobal = create(
           } catch (error) {
             console.error("Sign out error:", error);
           } finally {
-            await secure.remove("credentials");
             await secure.remove("tokens");
             
             set({
