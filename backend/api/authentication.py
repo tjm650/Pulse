@@ -44,7 +44,7 @@ class SupabaseJWTAuthentication(BaseAuthentication):
         if user.is_suspended_now:
             raise AuthenticationFailed("This account is suspended.")
 
-        return user, claims
+        return user, {**claims, "token": token}
 
     def authenticate_header(self, request):
         return "Bearer"
