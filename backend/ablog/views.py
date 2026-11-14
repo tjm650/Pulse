@@ -2,6 +2,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsOwnerOrReadOnly
 
 from .models import Bloger as Blog
 from .serializers import BlogSerializer
@@ -10,7 +12,13 @@ from .serializers import BlogSerializer
 class BlogViewSet(viewsets.ModelViewSet):
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     parser_classes = (MultiPartParser, FormParser)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['user'] = self.request.user
+        return context
 
     def create(self, request, *args, **kwargs):
         username = request.data["username"]
