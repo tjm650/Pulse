@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Q
 
 from api.models import CommunityDirectory, Notification
 from api.permissions import IsOwnerOrReadOnly
@@ -22,6 +23,17 @@ class BlogViewSet(viewsets.ModelViewSet):
         if getattr(self, "action", None) in {"interact", "share"}:
             return [IsAuthenticated()]
         return super().get_permissions()
+
+    def get_queryset(self):
+        user = self.request.user
+        return super().get_queryset().filter(
+            service__is_active=True
+        ).filter(
+            Q(service__public=True)
+            | Q(service__creator=user)
+            | Q(service__followers=user)
+            | Q(service__moderators=user)
+        ).distinct()
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
