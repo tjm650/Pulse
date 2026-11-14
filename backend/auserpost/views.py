@@ -2,7 +2,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework import status
-
+from rest_framework.permissions import IsAuthenticated
+from api.permissions import IsOwnerOrReadOnly
 
 from .serializers import PostSerializer
 from .models import Post
@@ -11,15 +12,20 @@ from .models import Post
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     parser_classes = (MultiPartParser, FormParser)
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['user'] = self.request.user
+        return context
+
     def create(self, request, *args, **kwargs):
-        username = request.data["username"]
-        name = request.data["name"]
-        image = request.data["image"]
-        description = request.data["description"]
-        email = request.data["email"]
-        year = request.data["year"]
-        Post.objects.create(username=username, name=name, image=image, description=description, email=email, year=year)
-        return Response("Post Created Successfully", status=status.HTTP_200_OK)   
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(sender=request.user)
+        return Response(
+            {"message": "Post Created Successfully", "post": serializer.data},
+            status=status.HTTP_201_CREATED,
+        )
     
