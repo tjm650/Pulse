@@ -61,16 +61,8 @@ class NotifSerializer(serializers.ModelSerializer):
         return values
 
     def get_user_liked(self, obj):
-        selfuser = self.context["user"]
-
-        values = obj.likes.all()
-        for v in values:
-            if selfuser == v:
-                val = True
-                return val
-            elif selfuser != v:
-                return None
-        return
+        user = self.context.get("user")
+        return bool(user and user.is_authenticated and obj.likes.filter(pk=user.pk).exists())
 
     def get_comments(self, obj):
         comments = obj.notif_comments.all().order_by("-created")[:3]  # Get latest 3 comments
@@ -89,16 +81,8 @@ class NotifSerializer(serializers.ModelSerializer):
             return PublicUserSerializer(v).data
 
     def get_user_interacted(self, obj):
-        selfuser = self.context["user"]
-
-        values = obj.interactions.all()
-        for v in values:
-            if selfuser == v:
-                val = True
-                return val
-            elif selfuser != v:
-                return None
-        return
+        user = self.context.get("user")
+        return bool(user and user.is_authenticated and obj.interactions.filter(pk=user.pk).exists())
 
     def get_total_interactions_count(self, obj):
         interactions = obj.interactions.all().count()
