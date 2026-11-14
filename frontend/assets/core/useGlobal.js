@@ -363,6 +363,7 @@ const useGlobal = create(
             set({ appState: { ...get().appState, isLoading: true } });
             
             const tokens = await secure.get("tokens");
+            await secure.remove("credentials");
             
             if (tokens?.access) {
               try {
@@ -545,6 +546,7 @@ const useGlobal = create(
             console.error("Sign out error:", error);
           } finally {
             await supabase.auth.signOut();
+            await secure.remove("credentials");
             await secure.remove("tokens");
             
             set({
