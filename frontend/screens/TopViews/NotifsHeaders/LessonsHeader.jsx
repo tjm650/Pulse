@@ -19,7 +19,7 @@ import { DGlobals } from "@/constants/DarkColor/DGlobals";
 //import { Globals } from "../..//Light";
 import useGlobal from "@/assets/core/useGlobal";
 import { LGlobals } from "@/constants/LightColor/LGlobals";
-import MainHeader from "@/GlobalScreens/MainHeader";
+import MainHeader from "@/screens/GlobalScreens/MainHeader";
 
 //======================================================================================
 
