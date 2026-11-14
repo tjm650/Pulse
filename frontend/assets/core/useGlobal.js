@@ -1674,6 +1674,17 @@ const useGlobal = create(
       onDirectMessage: async (payload) => {
         if (!payload?.new?.id || payload.eventType === "DELETE") return;
         try {
+          if (payload.eventType === "UPDATE") {
+            if (get().activeMessageConnectionId === payload.new.connection_id) {
+              const result = await getDirectMessages(payload.new.connection_id, 0);
+              set({ messagesList: result.messages, messagesNext: result.next });
+            } else {
+              set({ ConnectList: await getDirectConnections() });
+            }
+            return;
+          }
+
+          if (payload.eventType !== "INSERT") return;
           const result = await getDirectMessages(payload.new.connection_id, 0);
           const message = result.messages.find((item) => item.id === payload.new.id);
           if (message) {
@@ -1850,6 +1861,7 @@ const useGlobal = create(
     set({
       realtimeChannel: null,
       socket: null,
+      activeMessageConnectionId: null,
     });
   },
 
@@ -2317,10 +2329,12 @@ const useGlobal = create(
 
   messagesList: [],
   messagesNext: null,
+  activeMessageConnectionId: null,
   MessagesTyping: null,
   messagesUsername: null,
 
   messageList: (connectionId, page = 0) => {
+    set({ activeMessageConnectionId: connectionId });
     if (page === 0) {
       set((state) => ({
         messagesList: [],
