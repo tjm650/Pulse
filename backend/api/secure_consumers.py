@@ -8,14 +8,14 @@ from channels.generic.websocket import WebsocketConsumer
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+import time
 
 from afollows.models import Connection
 from amessages.models import Message
 from amessages.serializers import MessageSerializer
-from api.models import User
+from api.models import User, UserPreference
 from api.serializers import PublicUserSerializer
 from community.models import GroupChat, GroupCon
-from community.serializers import GroupMessageSerializer
 
 
 class SecureChatConsumer(WebsocketConsumer):
@@ -31,6 +31,7 @@ class SecureChatConsumer(WebsocketConsumer):
 
     def connect(self):
         self.user = self.scope.get("user")
+        self.auth_exp = self.scope.get("auth_exp")
         if not self.user or not self.user.is_authenticated:
             self.close(code=4401)
             return
@@ -64,6 +65,9 @@ class SecureChatConsumer(WebsocketConsumer):
         }))
 
     def receive(self, text_data=None, bytes_data=None):
+        if self.auth_exp is None or time.time() >= float(self.auth_exp):
+            self.close(code=4401)
+            return
         if not text_data:
             self._error("invalid_payload", "A JSON text payload is required.")
             return
@@ -165,6 +169,12 @@ class SecureChatConsumer(WebsocketConsumer):
             raise ValueError("A message or image is required")
 
         recipient = connection.receiver if connection.sender_id == self.user.pk else connection.sender
+        try:
+            recipient_preferences = UserPreference.objects.get(user=recipient)
+        except UserPreference.DoesNotExist:
+            recipient_preferences = None
+        if recipient_preferences and recipient_preferences.allow_messages_from == "none":
+            raise PermissionError("Recipient does not accept messages")
         with transaction.atomic():
             message = Message.objects.create(
                 connection=connection,
@@ -205,6 +215,16 @@ class SecureChatConsumer(WebsocketConsumer):
             "action": data.get("action"),
         })
 
+    def _group_message_data(self, message, viewer=None):
+        viewer = viewer or self.user
+        return {
+            "id": message.pk,
+            "is_me": message.sender_id == viewer.pk,
+            "sender": PublicUserSerializer(message.sender).data,
+            "text": message.text,
+            "created": message.created.isoformat(),
+        }
+
     def group_message_send(self, data):
         connection = self._group_connection(data.get("grpConnId"))
         message_text = data.get("grpmessage") or ""
@@ -224,7 +244,7 @@ class SecureChatConsumer(WebsocketConsumer):
             members.append(connection.creator)
         for member in members:
             payload = {
-                "grpmessage": GroupMessageSerializer(message, context={"user": member}).data,
+                "grpmessage": self._group_message_data(message, member),
                 "grpconnect": PublicUserSerializer(self.user).data,
             }
             self.send_group(member, "groupmessages.send", payload)
@@ -241,7 +261,7 @@ class SecureChatConsumer(WebsocketConsumer):
         if connection.creator_id not in {member.pk for member in members}:
             members.append(connection.creator)
         payload = {
-            "grp_messages": GroupMessageSerializer(messages, context={"user": self.user}, many=True).data,
+            "grp_messages": [self._group_message_data(message) for message in messages],
             "grpconnect": PublicUserSerializer(members, many=True).data,
         }
         self.send_group(self.user, "groupmessages.list", payload)
