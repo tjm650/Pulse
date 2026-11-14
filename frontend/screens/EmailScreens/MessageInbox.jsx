@@ -427,15 +427,19 @@ const MesssageInbox = ({ route }) => {
     messageList(connectionId);
   }, []);
 
-  // Cleanup typing timeout
+  // Cleanup typing timeout when the debounce value changes.
   useEffect(() => {
     return () => {
-      if (typingTimeout) {
-        clearTimeout(typingTimeout);
-      }
+      if (typingTimeout) clearTimeout(typingTimeout);
+    };
+  }, [typingTimeout]);
+
+  // Close the conversation's private typing channel only when leaving it.
+  useEffect(() => {
+    return () => {
       closeMessageTyping(connectionId);
     };
-  }, [typingTimeout, connectionId]);
+  }, [connectionId]);
 
   return (
     <SafeAreaView
