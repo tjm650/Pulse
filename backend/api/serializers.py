@@ -34,6 +34,36 @@ class UserSerializer(serializers.ModelSerializer):
             return f"{first} {last}"
         return first or last
 
+
+class PublicUserSerializer(serializers.ModelSerializer):
+    """Public-facing user representation; excludes email, phone, and account controls."""
+    full_name = serializers.ReadOnlyField()
+    name = serializers.SerializerMethodField()
+    is_online = serializers.ReadOnlyField()
+    total_posts = serializers.ReadOnlyField()
+    total_followers = serializers.ReadOnlyField()
+    total_following = serializers.ReadOnlyField()
+    reputation_score = serializers.ReadOnlyField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 'full_name', 'name',
+            'bio', 'profession', 'prof_initial', 'program', 'service_name',
+            'location', 'website', 'profile_image', 'coverImage', 'is_online',
+            'last_seen', 'verified', 'total_posts', 'total_followers',
+            'total_following', 'reputation_score', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_name(self, obj):
+        first = (obj.first_name or '').strip()
+        last = (obj.last_name or '').strip()
+        if first and last:
+            return f"{first} {last}"
+        return first or last
+
+
 class UserSignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True)
@@ -95,7 +125,7 @@ class UserAnalyticsSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 class CommunityDirectorySerializer(serializers.ModelSerializer):
-    creator = UserSerializer(read_only=True)
+    creator = PublicUserSerializer(read_only=True)
     member_count = serializers.ReadOnlyField()
     post_count = serializers.ReadOnlyField()
     engagement_rate = serializers.ReadOnlyField()
@@ -113,8 +143,8 @@ class CommunityDirectorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created', 'updated']
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(read_only=True)
-    receiver = UserSerializer(read_only=True)
+    sender = PublicUserSerializer(read_only=True)
+    receiver = PublicUserSerializer(read_only=True)
     reply_to = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all(), required=False)
     
     class Meta:
@@ -191,7 +221,7 @@ class MessageCreateSerializer(serializers.ModelSerializer):
         return value
 
 class SearchResultSerializer(serializers.Serializer):
-    users = UserSerializer(many=True)
+    users = PublicUserSerializer(many=True)
     communities = CommunityDirectorySerializer(many=True)
     posts = serializers.ListField()  # Would need PostSerializer if you have posts
     
@@ -199,7 +229,7 @@ class SearchResultSerializer(serializers.Serializer):
         return {
             'query': instance.get('query', ''),
             'results': {
-                'users': UserSerializer(instance.get('users', []), many=True).data,
+                'users': PublicUserSerializer(instance.get('users', []), many=True).data,
                 'communities': CommunityDirectorySerializer(instance.get('communities', []), many=True).data,
                 'posts': instance.get('posts', [])
             },
