@@ -92,7 +92,7 @@ class User(models.Model):
         return self.is_active and self.is_staff
 
 class UserPreference(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences', primary_key=True)
     
     # Notification preferences
     email_notifications = models.BooleanField(default=True)
@@ -133,7 +133,7 @@ class UserPreference(models.Model):
 
 
 class UserAnalytics(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='analytics')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='analytics', primary_key=True)
     
     # Engagement metrics
     total_logins = models.PositiveIntegerField(default=0)
@@ -271,7 +271,7 @@ class Message(models.Model):
     read_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
-        db_table = 'messages'
+        db_table = 'api_messages'
         indexes = [
             models.Index(fields=['sender', 'receiver']),
             models.Index(fields=['created_at']),
