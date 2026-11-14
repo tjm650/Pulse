@@ -121,6 +121,7 @@ const Register = () => {
       } else {
         setIsLoading(false);
         setAuth(true);
+        setIsFailed(!result.confirmationRequired);
         setRes(result.error || "Registration failed");
       }
     } catch (error) {
