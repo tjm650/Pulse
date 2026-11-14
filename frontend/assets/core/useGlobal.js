@@ -1741,6 +1741,29 @@ const useGlobal = create(
           console.error("[Pulse Realtime] Group refresh failed:", error.message);
         }
       },
+      onPostChange: async () => {
+        try {
+          await get().postsList(0);
+        } catch (error) {
+          console.error("[Pulse Realtime] Post feed refresh failed:", error.message);
+        }
+      },
+      onBlogChange: async () => {
+        try {
+          await get().BlogList(null, 0);
+        } catch (error) {
+          console.error("[Pulse Realtime] Blog feed refresh failed:", error.message);
+        }
+      },
+      onServiceNotificationChange: async () => {
+        const serviceId = get().activeNotifServiceId;
+        if (!serviceId) return;
+        try {
+          await get().notificationList(serviceId, null, null, 0);
+        } catch (error) {
+          console.error("[Pulse Realtime] Service notification refresh failed:", error.message);
+        }
+      },
     });
 
     // Compatibility adapter for legacy call sites. It dispatches the chat and
@@ -2189,6 +2212,7 @@ const useGlobal = create(
   notifList: [],
   notifNext: null,
   notifUsername: null,
+  activeNotifServiceId: null,
   // Poll-specific state
   pollList: [],
   pollNext: null,
@@ -2197,7 +2221,7 @@ const useGlobal = create(
   pollVoteDistribution: [],
   pollWinners: [],
   notificationList: async (notifId, userId, action, page = 0) => {
-    if (page === 0) set({ notifUsername: null, notifList: [], notifNext: null, loading: true, error: null });
+    if (page === 0) set({ notifUsername: null, activeNotifServiceId: notifId || null, notifList: [], notifNext: null, loading: true, error: null });
     try {
       const response = await api.get("/anotif/Notif/", {
         params: { service: notifId || undefined, page: page || 1 },
