@@ -1,10 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
+// Expo inlines EXPO_PUBLIC_* variables into the client bundle at build time.
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 
-const supabaseUrl = Constants.expoConfig?.extra?.EXPO_SUPABASE_URL;
-
-const supabasePublishableKey = Constants.expoConfig?.extra?.EXPO_SUPABASE_PUBLISHABLE_KEY;
+const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabasePublishableKey) {
   const missing = [
