@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from .models import AppNotif, AppReport, AppFeedback
-from api.serializers import UserSerializer, CommunityDirectorySerializer
+from api.serializers import PublicUserSerializer, CommunityDirectorySerializer
 
 
 
@@ -35,13 +35,13 @@ class AppNotifSerializer(serializers.ModelSerializer):
         return CommunityDirectorySerializer(obj.sender).data
     
     def get_sender_user(self, obj):
-        return UserSerializer(obj.sender_user).data
+        return PublicUserSerializer(obj.sender_user).data
     
     
     def get_receiver(self, obj):
         selfuser = self.context["user"]
         values = obj.receiver.all()
-        return UserSerializer(values, many=True).data
+        return PublicUserSerializer(values, many=True).data
 
         
     
@@ -51,7 +51,7 @@ class AppNotifSerializer(serializers.ModelSerializer):
     
     def get_interactions(self, obj):
         values = obj.interactions.all()
-        return UserSerializer(values, many=True).data
+        return PublicUserSerializer(values, many=True).data
 
 
     def get_user_interacted(self, obj):
@@ -86,17 +86,17 @@ class AppReportSerializer(serializers.ModelSerializer):
         ]
         
     def get_sender(self, obj):
-        return UserSerializer(obj.sender).data
+        return PublicUserSerializer(obj.sender).data
     
     def get_red_by(self, obj):
         selfuser = self.context["user"]
         values = obj.red_by.all() 
-        return UserSerializer(values, many=True).data
+        return PublicUserSerializer(values, many=True).data
 
     
     def get_attendand(self, obj):
         values= obj.attendand.all()  # Get latest attandand 
-        return UserSerializer(values, many=True).data
+        return PublicUserSerializer(values, many=True).data
     
 class AppFeedbackSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
@@ -118,14 +118,14 @@ class AppFeedbackSerializer(serializers.ModelSerializer):
         ]
         
     def get_sender(self, obj):
-        return UserSerializer(obj.sender).data
+        return PublicUserSerializer(obj.sender).data
     
     def get_red_by(self, obj):
         selfuser = self.context["user"]
         values = obj.red_by.all() 
-        return UserSerializer(values, many=True).data
+        return PublicUserSerializer(values, many=True).data
 
     
     def get_attendand(self, obj):
         values= obj.attendand.all()  # Get latest attandand 
-        return UserSerializer(values, many=True).data
+        return PublicUserSerializer(values, many=True).data
