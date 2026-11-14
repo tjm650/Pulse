@@ -189,6 +189,7 @@ const GroupInbox = ({ route }) => {
 
   const groupMessageSend = useGlobal((state) => state.groupMessageSend);
   const groupMessageType = useGlobal((state) => state.groupMessageType);
+  const closeGroupTyping = useGlobal((state) => state.closeGroupTyping);
   const groupTyping = useGlobal((state) => state.GroupMessagesTyping);
   const typingTimer = useRef(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -239,7 +240,7 @@ const GroupInbox = ({ route }) => {
     GroupChatList(grpConnId);
     return () => {
       if (typingTimer.current) clearTimeout(typingTimer.current);
-      groupMessageType(grpConnId, false);
+      closeGroupTyping(grpConnId);
     };
   }, [grpConnId]);
 
