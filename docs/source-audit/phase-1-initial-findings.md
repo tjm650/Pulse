@@ -69,7 +69,7 @@ The inspected Zustand store contains state and handlers for authentication, sear
 
 The global theme files confirm separate light and dark colour definitions. The exact values in the source files, not approximations in planning notes, remain authoritative.
 
-## 4. Verified legacy backend and required migration
+## 4. Verified Django backend to preserve
 
 The source backend is currently Django, not FastAPI:
 
@@ -78,9 +78,9 @@ The source backend is currently Django, not FastAPI:
 - The source contains 13 Django model modules across feature apps, including blogs, follows, messages, monetisation, service notifications, core API, official app notifications, search, user notifications, posts, communities, consumer views, and Quercus.
 - The backend project settings file is `backend/backend/settings.py`.
 
-This confirms the prompt's planned backend replacement is a genuine migration, not a small configuration change. The route definitions, models, serializers, consumers, and frontend API calls must be mapped before designing the new API and schema.
+**Owner's confirmed decision:** Keep Django as the backend and API framework. The rebuilt application must follow the existing Community Django project and app structure. Do not replace Django with FastAPI or introduce a new backend architecture. Supabase is the database platform for the rebuilt application; integrate it with Django while preserving existing models, API routes, serializers, views, authentication flow, and realtime behaviour wherever compatible with the approved Supabase change.
 
-The inspected frontend Supabase client currently contains placeholder URL and anonymous-key strings. No live Supabase configuration was verified in the inspected file. Do not infer or reuse a Supabase project from placeholders.
+The inspected frontend Supabase client currently contains placeholder URL and anonymous-key strings. No live Supabase configuration was verified in the inspected file. Do not infer or reuse a Supabase project from placeholders. Do not add configuration files or environment-variable conventions beyond what is necessary and explicitly approved for the Supabase integration.
 
 ## 5. Security and repository hygiene risks
 
@@ -115,6 +115,6 @@ The initial inspection is not a complete source audit. Remaining work includes:
 5. Inspect all Django models, migrations, serializers, views, URL configurations, and WebSocket consumers.
 6. Map media upload/display flows and Supabase Realtime/socket usage.
 7. Identify implemented, partially implemented, disconnected, and incomplete features.
-8. Record source evidence and unresolved questions before finalising the Supabase schema or FastAPI route catalogue.
+8. Record source evidence and unresolved questions while retaining the existing Django route and app structure; make only the database changes needed for Supabase.
 
-No replacement database schema, API contract, or UI redesign should be treated as final before this mapping is complete.
+No redesign or additional configuration should be introduced. Preserve the existing Django API contract and source structure; change only what is necessary to connect the application to Supabase.
