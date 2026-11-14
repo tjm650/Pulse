@@ -1,7 +1,7 @@
 import { supabase } from "@/services/supabase";
 
 const PROFILE_FIELDS =
-  "id,username,first_name,last_name,bio,profession,profile_image_path,cover_image_path,verified,is_online,last_seen";
+  "id,username,first_name,last_name,bio,profession,profile_image_path,cover_image_path,verified";
 
 async function requireUserId() {
   if (!supabase) {
