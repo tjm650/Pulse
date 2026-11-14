@@ -4,7 +4,7 @@ import secure from "./secure";
 import { supabase } from "@/services/supabase";
 
 export const ADDRESS = process.env.EXPO_PUBLIC_API_HOST || "localhost:8000";
-const API_BASE_URL = Constants.expoConfig?.extra?.EXPO_API_URL || `http://${ADDRESS}`;
+export const API_BASE_URL = Constants.expoConfig?.extra?.EXPO_API_URL || `http://${ADDRESS}`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
