@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.conf import settings
 from django.http import JsonResponse
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
@@ -19,8 +20,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import TokenError
+from urllib.request import Request as URLRequest, urlopen
+from urllib.error import HTTPError, URLError
 
 from .models import User, UserPreference, UserAnalytics, CommunityDirectory, Message, Notification, UserSession
 from .serializers import (
@@ -31,6 +32,35 @@ from auserpost.models import Post, Comment
 from amessages.models import Message as MessageModel
 
 logger = logging.getLogger(__name__)
+
+
+def _supabase_auth_request(endpoint, payload, access_token=None):
+    """Call Supabase Auth; Supabase owns password verification and token issuance."""
+    url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/{endpoint.lstrip('/')}"
+    headers = {
+        "apikey": settings.SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type": "application/json",
+    }
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    request = URLRequest(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+    try:
+        with urlopen(request, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8") or "{}")
+    except HTTPError as exc:
+        try:
+            detail = json.loads(exc.read().decode("utf-8") or "{}")
+            message = detail.get("msg") or detail.get("message") or detail.get("error_description") or "Supabase authentication failed"
+        except Exception:
+            message = "Supabase authentication failed"
+        raise ValueError(message) from exc
+    except (URLError, TimeoutError) as exc:
+        raise RuntimeError("Supabase Auth is temporarily unavailable") from exc
+
+
+def _supabase_tokens(session):
+    return {"access": session.get("access_token"), "refresh": session.get("refresh_token")}
+
  
 class BaseAPIView(APIView):
     """Base API view with common functionality"""
@@ -53,180 +83,112 @@ class UserSignIn(BaseAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        try:
-            data = json.loads(request.body)
-            username = data.get('username')
-            password = data.get('password')
-            
-            if not username or not password:
-                return Response({
-                    'error': 'Missing credentials',
-                    'message': 'Username and password are required'
-                }, status=status.HTTP_400_BAD_REQUEST)
+        identity = (request.data.get("username") or request.data.get("email") or "").strip()
+        password = request.data.get("password") or ""
+        if not identity or not password:
+            return Response({"error": "Missing credentials", "message": "Username/email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-            user = authenticate(username=username, password=password)
-            
-            if user is None:
-                return Response({
-                    'error': 'Invalid credentials',
-                    'message': 'Username or password is incorrect'
-                }, status=status.HTTP_401_UNAUTHORIZED)
-            
-            if not user.is_active:
-                return Response({
-                    'error': 'Account disabled',
-                    'message': 'Your account has been disabled'
-                }, status=status.HTTP_403_FORBIDDEN)
-            
-            # Update user analytics
-            analytics, created = UserAnalytics.objects.get_or_create(user=user)
-            analytics.total_logins += 1
-            analytics.last_login = timezone.now()
-            analytics.save()
-            
-            # Update online status
+        try:
+            user = User.objects.get(Q(username__iexact=identity) | Q(email__iexact=identity))
+        except User.DoesNotExist:
+            return Response({"error": "Invalid credentials", "message": "Username/email or password is incorrect"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not user.is_active or user.is_suspended_now:
+            return Response({"error": "Account unavailable", "message": "This account is inactive or suspended"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            session = _supabase_auth_request("token?grant_type=password", {"email": user.email, "password": password})
             user.is_online = True
             user.last_seen = timezone.now()
-            user.save()
-            
-            # Generate tokens
-            refresh = RefreshToken.for_user(user)
-            
-            # Create or update session
-            session_id = str(refresh.access_token)
-            UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
-            UserSession.objects.create(
-                user=user,
-                session_id=session_id,
-                device_info=request.META.get('HTTP_USER_AGENT', ''),
-                ip_address=request.META.get('REMOTE_ADDR'),
-                expires_at=timezone.now() + timedelta(days=7)
-            )
-            
-            return Response({
-                'user': UserSerializer(user).data,
-                'tokens': {
-                    'access': str(refresh.access_token),
-                    'refresh': str(refresh)
-                },
-                'message': 'Login successful'
-            }, status=status.HTTP_200_OK)
-            
-        except json.JSONDecodeError:
-            return Response({
-                'error': 'Invalid JSON',
-                'message': 'Request body must be valid JSON'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Login error: {str(e)}")
-            return Response({
-                'error': 'Login failed',
-                'message': 'An error occurred during login'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            user.save(update_fields=["is_online", "last_seen"])
+            analytics, _ = UserAnalytics.objects.get_or_create(user=user)
+            analytics.total_logins += 1
+            analytics.last_login = timezone.now()
+            analytics.save(update_fields=["total_logins", "last_login"])
+            return Response({"user": UserSerializer(user).data, "tokens": _supabase_tokens(session), "message": "Login successful"}, status=status.HTTP_200_OK)
+        except ValueError:
+            return Response({"error": "Invalid credentials", "message": "Username/email or password is incorrect"}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as exc:
+            logger.error("Supabase sign-in error: %s", str(exc))
+            return Response({"error": "Login failed", "message": "An error occurred during login"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
 
 class UserSignUp(BaseAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        data = request.data
+        required = ["username", "email", "password", "first_name", "last_name"]
+        missing = [field for field in required if not data.get(field)]
+        if missing:
+            return Response({"error": "Missing required fields", "fields": missing}, status=status.HTTP_400_BAD_REQUEST)
+        if len(data["password"]) < 8:
+            return Response({"error": "Password too short", "message": "Password must contain at least 8 characters"}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(username__iexact=data["username"]).exists():
+            return Response({"error": "Username taken", "message": "This username is already taken"}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(email__iexact=data["email"]).exists():
+            return Response({"error": "Email taken", "message": "This email is already registered"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            data = json.loads(request.body)
-            
-            # Validate required fields
-            required_fields = ['username', 'email', 'password', 'first_name', 'last_name']
-            for field in required_fields:
-                if not data.get(field):
-                    return Response({
-                        'error': 'Missing required field',
-                        'message': f'{field} is required'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Check if user already exists
-            if User.objects.filter(username=data['username']).exists():
-                return Response({
-                    'error': 'Username taken',
-                    'message': 'This username is already taken'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            if User.objects.filter(email=data['email']).exists():
-                return Response({
-                    'error': 'Email taken',
-                    'message': 'This email is already registered'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Create user
-            user = User.objects.create_user(
-                username=data['username'],
-                email=data['email'],
-                password=data['password'],
-                first_name=data['first_name'],
-                last_name=data['last_name']
-            )
-            
-            # Create user preferences
-            UserPreference.objects.create(user=user)
-            
-            # Create user analytics
-            UserAnalytics.objects.create(user=user)
-            
-            # Generate tokens
-            refresh = RefreshToken.for_user(user)
-            
+            result = _supabase_auth_request("signup", {
+                "email": data["email"],
+                "password": data["password"],
+                "data": {"username": data["username"], "first_name": data["first_name"], "last_name": data["last_name"]},
+            })
+            auth_user = result.get("user") or result
+            user_id = auth_user.get("id")
+            user = User.objects.get(pk=user_id) if user_id else None
+            tokens = _supabase_tokens(result)
+            confirmation_required = not bool(tokens["access"] and tokens["refresh"])
             return Response({
-                'user': UserSerializer(user).data,
-                'tokens': {
-                    'access': str(refresh.access_token),
-                    'refresh': str(refresh)
+                "user": UserSerializer(user).data if user else {
+                    "id": user_id, "username": data["username"], "email": data["email"],
+                    "first_name": data["first_name"], "last_name": data["last_name"],
                 },
-                'message': 'Account created successfully'
+                "tokens": tokens,
+                "confirmation_required": confirmation_required,
+                "message": "Check your email to confirm your account" if confirmation_required else "Account created successfully",
             }, status=status.HTTP_201_CREATED)
-            
-        except json.JSONDecodeError:
-            return Response({
-                'error': 'Invalid JSON',
-                'message': 'Request body must be valid JSON'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Signup error: {str(e)}")
-            return Response({
-                'error': 'Signup failed',
-                'message': 'An error occurred during signup'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except ValueError as exc:
+            return Response({"error": "Registration failed", "message": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.error("Supabase sign-up error: %s", str(exc))
+            return Response({"error": "Registration failed", "message": "An error occurred during registration"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
 
 class UserLogout(BaseAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        user = request.user
+        user.is_online = False
+        user.last_seen = timezone.now()
+        user.save(update_fields=["is_online", "last_seen"])
+        access_token = request.auth.get("token") if isinstance(request.auth, dict) else None
         try:
-            # Update user status
-            user = request.user
-            user.is_online = False
-            user.last_seen = timezone.now()
-            user.save()
-            
-            # Deactivate sessions
-            UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
-            
-            # Blacklist refresh token if provided
-            data = json.loads(request.body) if request.body else {}
-            refresh_token = data.get('refresh')
-            
-            if refresh_token:
-                try:
-                    token = RefreshToken(refresh_token)
-                    token.blacklist()
-                except TokenError:
-                    pass  # Token might already be invalid
-            
-            return Response({
-                'message': 'Logout successful'
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Logout error: {str(e)}")
-            return Response({
-                'error': 'Logout failed',
-                'message': 'An error occurred during logout'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            if access_token:
+                _supabase_auth_request("logout", {}, access_token=access_token)
+        except Exception as exc:
+            logger.info("Supabase remote logout response: %s", str(exc))
+        return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+
+
+class SupabaseTokenRefresh(BaseAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response({"error": "Refresh token required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            session = _supabase_auth_request("token?grant_type=refresh_token", {"refresh_token": refresh_token})
+            return Response(_supabase_tokens(session), status=status.HTTP_200_OK)
+        except ValueError:
+            return Response({"error": "Invalid refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as exc:
+            logger.error("Supabase token refresh error: %s", str(exc))
+            return Response({"error": "Token refresh failed"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
 
 class UserProfile(BaseAPIView):
     permission_classes = [IsAuthenticated]
