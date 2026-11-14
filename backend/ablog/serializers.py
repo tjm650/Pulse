@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from api.serializers import CommunityDirectorySerializer, UserSerializer
+from api.serializers import CommunityDirectorySerializer, PublicPublicUserSerializer
 from .models import Bloger
 
 
@@ -38,7 +38,7 @@ class BlogSerializer(serializers.ModelSerializer):
         ]
 
     def get_sender(self, obj):
-        return UserSerializer(obj.sender).data
+        return PublicUserSerializer(obj.sender).data
 
     def get_service(self, obj):
         return CommunityDirectorySerializer(obj.service).data
@@ -46,7 +46,7 @@ class BlogSerializer(serializers.ModelSerializer):
     
     def get_tags(self, obj):
         values = obj.tags.all() 
-        return UserSerializer(values, many=True).data
+        return PublicUserSerializer(values, many=True).data
 
 
     def get_tags_count(self, obj):
@@ -56,7 +56,7 @@ class BlogSerializer(serializers.ModelSerializer):
     def get_interactions(self, obj):
         values = obj.interactions.all()
         for v in values:   
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_interactions_count(self, obj): 
         values = obj.interactions.all().count()
@@ -64,7 +64,7 @@ class BlogSerializer(serializers.ModelSerializer):
     def get_shared(self, obj):
         values = obj.shared.all()
         for v in values:
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_shared_count(self, obj):
         values = obj.shared.all().count()
