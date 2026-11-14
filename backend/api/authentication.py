@@ -1,10 +1,17 @@
 import jwt
+from functools import lru_cache
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 
 from .models import User
+
+
+@lru_cache(maxsize=1)
+def _jwks_client():
+    jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+    return jwt.PyJWKClient(jwks_url)
 
 
 class SupabaseJWTAuthentication(BaseAuthentication):
@@ -21,8 +28,7 @@ class SupabaseJWTAuthentication(BaseAuthentication):
 
         try:
             token = parts[1].decode("utf-8")
-            jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
-            signing_key = jwt.PyJWKClient(jwks_url).get_signing_key_from_jwt(token).key
+            signing_key = _jwks_client().get_signing_key_from_jwt(token).key
             claims = jwt.decode(
                 token,
                 signing_key,
