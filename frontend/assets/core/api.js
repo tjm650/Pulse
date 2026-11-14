@@ -54,7 +54,9 @@ api.interceptors.response.use(
           };
 
           await secure.set("tokens", newTokens);
-          await supabase.auth.setSession({ access_token: newTokens.access, refresh_token: newTokens.refresh });
+          if (supabase) {
+            await supabase.auth.setSession({ access_token: newTokens.access, refresh_token: newTokens.refresh });
+          }
 
           originalRequest.headers.Authorization = `Bearer ${newTokens.access}`;
           return api(originalRequest);
@@ -62,7 +64,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
         // Clear invalid tokens
-        await supabase.auth.signOut({ scope: "local" });
+        if (supabase) {
+          await supabase.auth.signOut({ scope: "local" });
+        }
         await secure.remove("tokens");
       }
     }
