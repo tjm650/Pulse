@@ -1,5 +1,17 @@
-import api, { API_BASE_URL } from "@/assets/core/api";
+import api from "@/assets/core/api";
 import { supabase } from "@/services/supabase";
+import {
+  getDirectMessages,
+  getDirectConnections,
+  sendDirectMessage,
+  markDirectMessagesRead,
+  getGroupConnections,
+  getGroupMessages,
+  sendGroupMessage,
+  getUserNotifications,
+  markUserNotificationRead,
+  subscribePulseRealtime,
+} from "@/services/pulseRealtime";
 import secure from "@/assets/core/secure";
 import utils from "@/assets/core/utils";
 import { create } from "zustand";
@@ -371,6 +383,9 @@ const useGlobal = create(
                     },
                   }));
                   get().initializeUserData();
+              get().socketConnect();
+                  get().socketConnect();
+            get().socketConnect();
                   get().initializeMessagePostUtils();
                   return { success: true, user };
                 }
@@ -1608,752 +1623,194 @@ const useGlobal = create(
   //----------------------------------------
 
   socket: null,
+  realtimeChannel: null,
 
   socketConnect: async () => {
-    const tokens = await secure.get("tokens");
-    const websocketBase = API_BASE_URL
-      .replace(/^https:/i, "wss:")
-      .replace(/^http:/i, "ws:")
-      .replace(/\/+$/, "");
-    const url = `${websocketBase}/api/`;
+    const userId = get().user?.id;
+    if (!userId) {
+      console.warn("[Pulse Realtime] No authenticated user; subscription skipped.");
+      return { success: false, error: "Not authenticated" };
+    }
 
-    const socket = new WebSocket(url, [], {
-      headers: {
-        Authorization: `Bearer ${tokens.access}`,
+    const existingChannel = get().realtimeChannel;
+    if (existingChannel) {
+      await supabase.removeChannel(existingChannel);
+    }
+
+    const channel = subscribePulseRealtime({
+      userId,
+      onDirectMessage: async (payload) => {
+        if (!payload?.new?.id || payload.eventType === "DELETE") return;
+        try {
+          const result = await getDirectMessages(payload.new.connection_id, 0);
+          const message = result.messages.find((item) => item.id === payload.new.id);
+          if (message) {
+            responseMessageSend(set, get, {
+              message,
+              connect: result.connect,
+            });
+          }
+        } catch (error) {
+          console.error("[Pulse Realtime] Direct-message update failed:", error.message);
+        }
+      },
+      onGroupMessage: async (payload) => {
+        if (!payload?.new?.id || payload.eventType === "DELETE") return;
+        try {
+          const result = await getGroupMessages(payload.new.connection_id, 0);
+          const message = result.grp_messages.find((item) => item.id === payload.new.id);
+          if (message) {
+            responseGroupMessageSend(set, get, {
+              grpmessage: message,
+              grpconnect: message.sender,
+            });
+          }
+        } catch (error) {
+          console.error("[Pulse Realtime] Group-message update failed:", error.message);
+        }
+      },
+      onUserNotification: async (payload) => {
+        try {
+          if (payload?.table === "notifications") {
+            await get().loadNotifications();
+            return;
+          }
+          const [all, unread] = await Promise.all([
+            getUserNotifications(false),
+            getUserNotifications(true),
+          ]);
+          set({ usernotifList: all, usernotifListUnread: unread });
+        } catch (error) {
+          console.error("[Pulse Realtime] Notification update failed:", error.message);
+        }
+      },
+      onConnectionChange: async () => {
+        try {
+          const connections = await getDirectConnections();
+          set({ ConnectList: connections });
+        } catch (error) {
+          console.error("[Pulse Realtime] Connection refresh failed:", error.message);
+        }
+      },
+      onGroupChange: async () => {
+        try {
+          const groups = await getGroupConnections();
+          set({ GroupConnectList: groups });
+        } catch (error) {
+          console.error("[Pulse Realtime] Group refresh failed:", error.message);
+        }
       },
     });
-    socket.onopen = () => {
-      utils.log("socket.open");
 
-      socket.send(
-        JSON.stringify({
-          source: "app.trending",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "user.notif.unread_notifs",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "app.notif.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "directory.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "request.list",
-        })
-      );
-      socket.send(
-        JSON.stringify({
-          source: "connect.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "notif.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "notif.likes",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "blog.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "post.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "post.likes",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "comment.likes",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "notif.comment.likes",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "comment.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "notif.comment.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "blog.interactions",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "post.interactions",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "notif.interactions",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "comment.interactions",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "notif.comment.interactions",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "blog.shared",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "groupmessages.list",
-        })
-      );
-
-      socket.send(
-        JSON.stringify({
-          source: "group_connect.list",
-        })
-      );
-
-      // Initialize message-post utilities
-      socket.send(
-        JSON.stringify({
-          source: "message.post.utils.init",
-        })
-      );
-
-      // Initialize analytics tracking
-      socket.send(
-        JSON.stringify({
-          source: "analytics.init",
-        })
-      );
-    };
-
-    socket.onmessage = (event) => {
-      // Convert data back to JS object
-      const parsed = JSON.parse(event.data);
-
-      // Debug log formatted data
-      utils.log("socket.onmessage", parsed);
-
-      const responses = {
-        "app.search": responseAppSearch,
-        "app.trending": responseAppTrending,
-        ////////////////
-
-        // "user.notif.post.like.list": responseUserNotificationPostLike,
-        "user.notif.all_notifs": responseUserNotif,
-        "user.notif.unread_notifs": responseUserNotifUnread,
-        ////////////////
-
-        "app.notif.list": responseAppNotifList,
-        ////////////////
-
-        "directory.list": responseDirectory,
-        //////////////////
-
-        "user.occupation": responseOccupation,
-        search: responseSearch,
-        "image.upload": responseImage,
-        //////////////////
-
-        "request.accept": responseRequestAccept,
-        "request.delete": responseRequestDelete,
-        "request.connect": responseRequestConnect,
-        "request.list": responseRequestList,
-        //////////////////
-
-        "blog.list": responseBlogList,
-        // "blog.send": responseBlogSend,
-        ///////////////
-
-        "post.list": responsePostList,
-        "comment.list": responsePostCommentList,
-        // "post.send": responsePostSend,
-        ////////////////
-
-        "notif.comment.list": responseNotifPostCommentList,
-        "notif.list": responseNotifList,
-        "notif.likes": responseNotifLikes,
-        "notif.poll.update": responseNotifPollUpdate,
-        "notif.poll.list": responseNotifPollList,
-        "notif.poll.details": responseNotifPollDetails,
-        "notif.poll.statistics": responseNotifPollStatistics,
-        "notif.poll.update": responseNotifPollUpdate,
-        /////////////////
-
-        "connect.list": responseConnectList,
-        "connect.new": responseConnectNew,
-        ///////////////// 
-
-        "message.list": responseMessageList,
-        "message.send": responseMessageSend,
-        "message.type": responseMessageType,
-        //////////////////
-
-        "group_connect.new": responseGroupConnectNew,
-        "group_connect.list": responseGroupConnectList,
-        "groupmessages.list": responseGroupMessageList,
-        "group_message.send": responseGroupMessageSend,
-
-        // Enhanced message-post routing
-        "message.post.create": (set, get, data) => {
-          // Handle combined message and post creation
-          const { message, post } = data;
-
-          // Update messaging state
-          if (message) {
-            set((state) => ({
-              messaging: {
-                ...state.messaging,
-                messages: {
-                  ...state.messaging.messages,
-                  [message.conversation_id]: [
-                    ...(state.messaging.messages[message.conversation_id] || []),
-                    message,
-                  ],
-                },
-              },
-            }));
-          }
-
-          // Update content state
-          if (post) {
-            set((state) => ({
-              content: {
-                ...state.content,
-                posts: [post, ...state.content.posts],
-              },
-            }));
-          }
-        },
-
-        "message.analytics.track": (set, get, data) => {
-          // Track message analytics through the existing monetization store.
-          MonetizationStore.trackPageVisit(set, get, 'message_interaction', data.conversation_id, 'message');
-        },
-
-        "post.analytics.track": (set, get, data) => {
-          // Track post analytics through the existing monetization store.
-          MonetizationStore.trackPageVisit(set, get, 'post_interaction', data.post_id, 'post');
-        },
-  // monetization
-    "monetization.marketing": MonetizationStore.responseMarketing,
-  "monetization.library": MonetizationStore.responseLibrary,
-  "monetization.campusmap": MonetizationStore.responseCampusMap,
-  "monetization.accommodations": MonetizationStore.responseAccommodations,
-  "monetization.tx": MonetizationStore.responseTxAgents,
-
-    // analytics
-    "analytics.dashboard": (set, get, data) => {
-      set((state) => ({
-        monetization: {
-          ...state.monetization,
-          analytics: {
-            ...state.monetization.analytics,
-            dashboard: data.dashboard || [],
-            isLoading: false
-          }
+    // Compatibility adapter for legacy call sites. It dispatches the chat and
+    // notification operations to Supabase; it is not a network WebSocket.
+    const realtimeAdapter = {
+      readyState: 3,
+      send: (raw) => {
+        let event;
+        try {
+          event = JSON.parse(raw);
+        } catch {
+          console.warn("[Pulse Realtime] Ignored malformed legacy event.");
+          return;
         }
-      }));
-    },
-    "analytics.summary": (set, get, data) => {
-      set((state) => ({
-        monetization: {
-          ...state.monetization,
-          analytics: {
-            ...state.monetization.analytics,
-            summary: data.summary || {
-              total_visits_7days: 0,
-              unique_visitors_7days: 0,
-              top_pages: []
+
+        const run = async () => {
+          switch (event.source) {
+            case "connect.list": {
+              set({ ConnectList: await getDirectConnections() });
+              break;
             }
+            case "message.list": {
+              const result = await getDirectMessages(event.connectionId, event.page || 0);
+              responseMessageList(set, get, result);
+              break;
+            }
+            case "message.send": {
+              await sendDirectMessage(event);
+              break;
+            }
+            case "message.red": {
+              await markDirectMessagesRead(event.connectionId);
+              break;
+            }
+            case "group_connect.list": {
+              set({ GroupConnectList: await getGroupConnections() });
+              break;
+            }
+            case "groupmessages.list": {
+              const result = await getGroupMessages(event.grpConnId, event.page || 0);
+              responseGroupMessageList(set, get, result);
+              break;
+            }
+            case "groupmessages.send": {
+              await sendGroupMessage(event.grpConnId, event.grpmessage);
+              break;
+            }
+            case "user.notif.all_notifs": {
+              set({ usernotifList: await getUserNotifications(false) });
+              break;
+            }
+            case "user.notif.unread_notifs": {
+              set({ usernotifListUnread: await getUserNotifications(true) });
+              break;
+            }
+            case "user.notif.red": {
+              await markUserNotificationRead(event.notif_user_id);
+              break;
+            }
+            case "message.type":
+            case "groupmessages.type":
+              console.info("[Pulse Realtime] Typing indicators are not enabled yet.");
+              break;
+            default:
+              console.warn(
+                `[Pulse Realtime] Legacy event "${event.source}" is not migrated yet.`
+              );
           }
-        }
-      }));
-    },
-    "analytics.visit_tracked": (set, get, data) => {
-      // Optionally refresh analytics data after a visit is tracked
-      console.log('Visit tracked:', data);
-    },
+        };
 
-    // Service Guide AI Search
-    "service_guide.ai_search": (set, get, data) => {
-      if (data.error) {
-        console.error('AI Search error:', data.error);
-        return;
-      }
-
-      // Store AI search results in a dedicated state
-      set((state) => ({
-        serviceGuide: {
-          ...state.serviceGuide,
-          aiSearchResults: data,
-          isLoading: false
-        }
-      }));
-    },
-
-    "service_guide.list": (set, get, data) => {
-      set((state) => ({
-        serviceGuide: {
-          ...state.serviceGuide,
-          serviceGuides: [...(state.serviceGuide.serviceGuides || []), ...(data.service_guides || [])],
-          serviceGuidesNext: data.next || null,
-          isLoading: false
-        }
-      }));
-    },
-
-    "service_guide.documents": (set, get, data) => {
-      if (data.error) {
-        console.error('Service guide documents error:', data.error);
-        return;
-      }
-
-      set((state) => ({
-        serviceGuide: {
-          ...state.serviceGuide,
-          documents: data.documents || [],
-          documentsNext: data.next || null,
-          isLoading: false
-        }
-      }));
-    },
-
-    // Quercus AI Response Handlers
-    "quercus.ai_response": (set, get, data) => {
-      if (data.error) {
-        console.error('Quercus AI response error:', data.error);
-        set((state) => ({
-          quercusAI: {
-            ...state.quercusAI,
-            error: data.error,
-            isLoading: false
-          }
-        }));
-        return;
-      }
-
-      // Add AI response to messages
-      const newMessage = {
-        id: Date.now(),
-        text: data.response,
-        isUser: false,
-        timestamp: data.timestamp || new Date().toISOString(),
-        type: 'ai_response',
-        conversation_id: data.conversation_id,
-        message_id: data.message_id,
-      };
-
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          messages: [...(state.quercusAI.messages || []), newMessage],
-          currentConversation: data.conversation_id || state.quercusAI.currentConversation,
-          isLoading: false,
-          typing: false,
-        }
-      }));
-    },
-
-    "quercus.conversation_history": (set, get, data) => {
-      if (data.error) {
-        console.error('Conversation history error:', data.error);
-        return;
-      }
-
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          conversations: data.conversations || [],
-          messages: data.messages || [],
-          isLoading: false,
-        }
-      }));
-    },
-
-    "quercus.conversation_list": (set, get, data) => {
-      if (data.error) {
-        console.error('Conversation list error:', data.error);
-        return;
-      }
-
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          conversations: data.conversations || [],
-          isLoading: false,
-        }
-      }));
-    },
-
-    "quercus.conversation_created": (set, get, data) => {
-      if (data.error) {
-        console.error('Conversation creation error:', data.error);
-        return;
-      }
-
-      // Add new conversation to the list
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          conversations: [data, ...(state.quercusAI.conversations || [])],
-          currentConversation: data.conversation_id,
-          isLoading: false,
-        }
-      }));
-    },
-
-    "quercus.campus_info": (set, get, data) => {
-      if (data.error) {
-        console.error('Campus info error:', data.error);
-        return;
-      }
-
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          campusInfo: {
-            ...state.quercusAI.campusInfo,
-            [data.type]: data,
-          },
-          isLoading: false,
-        }
-      }));
-    },
-
-    "quercus.study_plan": (set, get, data) => {
-      if (data.error) {
-        console.error('Study plan error:', data.error);
-        return;
-      }
-
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          studyPlan: data,
-          isLoading: false,
-        }
-      }));
-    },
-
-    "quercus.career_guidance": (set, get, data) => {
-      if (data.error) {
-        console.error('Career guidance error:', data.error);
-        return;
-      }
-
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          careerGuidance: data,
-          isLoading: false,
-        }
-      }));
-    },
-
-    "quercus.settings_updated": (set, get, data) => {
-      if (data.error) {
-        console.error('Settings update error:', data.error);
-        return;
-      }
-
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          aiSettings: { ...state.quercusAI.aiSettings, ...data },
-          isLoading: false,
-        }
-      }));
-    },
-
-    "quercus.typing": (set, get, data) => {
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          typing: data.is_typing || false,
-        }
-      }));
-    },
-
-    "quercus.error": (set, get, data) => {
-      console.error('Quercus error:', data.error);
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          error: data.error,
-          isLoading: false,
-          typing: false,
-        }
-      }));
-    },
-
-    // Enhanced message sending response
-    "message.send.with_utils": (set, get, data) => {
-      if (data.error) {
-        console.error('Message send with utils error:', data.error);
-        return;
-      }
-
-      // Update message state with utilities data
-      set((state) => ({
-        messaging: {
-          ...state.messaging,
-          messages: {
-            ...state.messaging.messages,
-            [data.conversation_id]: [
-              ...(state.messaging.messages[data.conversation_id] || []),
-              { ...data.message, utils_processed: true },
-            ],
-          },
-        },
-      }));
-    },
-
-    // Enhanced post creation response
-    "post.create.with_utils": (set, get, data) => {
-      if (data.error) {
-        console.error('Post create with utils error:', data.error);
-        return;
-      }
-
-      // Update content state with utilities data
-      set((state) => ({
-        content: {
-          ...state.content,
-          posts: [data.post, ...state.content.posts],
-        },
-      }));
-    },
-
-    // Quercus message processing response
-    "quercus.process_message": (set, get, data) => {
-      if (data.error) {
-        console.error('Quercus message processing error:', data.error);
-        return;
-      }
-
-      // Add Quercus AI insights to the conversation
-      if (data.ai_insights) {
-        set((state) => ({
-          messaging: {
-            ...state.messaging,
-            messages: {
-              ...state.messaging.messages,
-              [data.conversation_id]: [
-                ...(state.messaging.messages[data.conversation_id] || []),
-                {
-                  id: data.message_id,
-                  content: data.ai_insights,
-                  type: 'ai_insight',
-                  timestamp: data.timestamp,
-                },
-              ],
-            },
-          },
-        }));
-      }
-    },
-
-    // Batch operations response
-    "message.batch_operations": (set, get, data) => {
-      if (data.error) {
-        console.error('Batch operations error:', data.error);
-        return;
-      }
-
-      // Update multiple states based on batch results
-      if (data.results) {
-        data.results.forEach(result => {
-          if (result.type === 'message_update') {
-            set((state) => ({
-              messaging: {
-                ...state.messaging,
-                messages: {
-                  ...state.messaging.messages,
-                  [result.conversation_id]: result.messages,
-                },
-              },
-            }));
-          }
+        run().catch((error) => {
+          console.error("[Pulse Realtime] Operation failed:", error.message);
         });
-      }
-    },
-
-    // Message search response
-    "message.search.with_utils": (set, get, data) => {
-      if (data.error) {
-        console.error('Message search error:', data.error);
-        return;
-      }
-
-      // Update search results with utilities processing
-      set((state) => ({
-        messaging: {
-          ...state.messaging,
-          searchResults: data.results || [],
-          searchMetadata: data.metadata || {},
-        },
-      }));
-    },
-
-    // Content insights response
-    "content.insights": (set, get, data) => {
-      if (data.error) {
-        console.error('Content insights error:', data.error);
-        return;
-      }
-
-      // Store content insights
-      set((state) => ({
-        content: {
-          ...state.content,
-          insights: {
-            ...state.content.insights,
-            [data.content_id]: data.insights,
-          },
-        },
-      }));
-    },
-
-    // Message post sync response
-    "message.post.sync": (set, get, data) => {
-      if (data.error) {
-        console.error('Message post sync error:', data.error);
-        return;
-      }
-
-      // Update sync status
-      set((state) => ({
-        messaging: {
-          ...state.messaging,
-          lastSync: data.timestamp,
-          syncStatus: 'synced',
-        },
-        content: {
-          ...state.content,
-          lastSync: data.timestamp,
-          syncStatus: 'synced',
-        },
-      }));
-    },
-
-    // Message-Post utilities initialization response
-    "message.post.utils.init": (set, get, data) => {
-      console.log('Message-Post utilities initialized:', data);
-      // Configure message-post integration settings
-      set((state) => ({
-        messaging: {
-          ...state.messaging,
-          settings: { ...state.messaging.settings, ...data.messaging_settings },
-        },
-        content: {
-          ...state.content,
-          settings: { ...state.content.settings, ...data.content_settings },
-        },
-      }));
-    },
-
-    // Analytics initialization response
-    "analytics.init": (set, get, data) => {
-      console.log('Analytics initialized:', data);
-      // Set up analytics configuration
-      set((state) => ({
-        performance: {
-          ...state.performance,
-          metrics: { ...state.performance.metrics, ...data.analytics_config },
-        },
-      }));
-    },
-
-    // Quercus integration initialization response
-    "quercus.integration.init": (set, get, data) => {
-      console.log('Quercus integration initialized:', data);
-      // Configure Quercus AI integration settings
-      set((state) => ({
-        quercusAI: {
-          ...state.quercusAI,
-          messageIntegration: { ...state.quercusAI.messageIntegration, ...data.integration_settings },
-        },
-      }));
-    },
-      };
-
-      const resp = responses[parsed.source];
-      if (resp) {
-        utils.log('parsed.source "' + parsed.source + '" not found');
-        return resp(set, get, parsed.data);
-      }
+      },
+      close: () => {},
     };
-    socket.onerror = (e) => {
-      utils.log("socket.onerror", e.message);
-    };
-    socket.onclose = () => {
-      utils.log("socket.onclose ");
-    };
-    set((state) => ({
-      socket: socket,
-    }));
-    utils.log("TOKENS", tokens);
+
+    set({
+      realtimeChannel: channel,
+      socket: realtimeAdapter,
+    });
+
+    try {
+      const [connections, groups, allNotifications, unreadNotifications] = await Promise.all([
+        getDirectConnections(),
+        getGroupConnections(),
+        getUserNotifications(false),
+        getUserNotifications(true),
+      ]);
+      set({
+        ConnectList: connections,
+        GroupConnectList: groups,
+        usernotifList: allNotifications,
+        usernotifListUnread: unreadNotifications,
+      });
+    } catch (error) {
+      console.error("[Pulse Realtime] Initial data load failed:", error.message);
+    }
+
+    return { success: true };
   },
 
-  socketClose: () => {
-    const socket = get().socket;
-    if (socket) {
-      socket.close();
+  socketClose: async () => {
+    const channel = get().realtimeChannel;
+    if (channel) {
+      await supabase.removeChannel(channel);
     }
-    set((state) => ({
+    set({
+      realtimeChannel: null,
       socket: null,
-    }));
+    });
   },
 
   //----------------------------------------
@@ -2808,7 +2265,7 @@ const useGlobal = create(
   //            Friends
   //----------------------------------------
 
-  ConnectList: null,
+  ConnectList: [],
 
   /////////////////////////////////////////// Messages ///////////////////////////
   /////////////////////////////////////////// Messages ///////////////////////////
