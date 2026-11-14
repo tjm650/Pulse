@@ -1,4 +1,4 @@
-import api, { ADDRESS } from "@/assets/core/api";
+import api, { API_BASE_URL } from "@/assets/core/api";
 import { supabase } from "@/services/supabase";
 import secure from "@/assets/core/secure";
 import utils from "@/assets/core/utils";
@@ -1611,8 +1611,11 @@ const useGlobal = create(
 
   socketConnect: async () => {
     const tokens = await secure.get("tokens");
-    const wsProtocol = process.env.EXPO_PUBLIC_API_URL?.startsWith("https://") ? "wss" : "ws";
-    const url = `${wsProtocol}://${ADDRESS}/api/?token=${tokens.access}`;
+    const websocketBase = API_BASE_URL
+      .replace(/^https:/i, "wss:")
+      .replace(/^http:/i, "ws:")
+      .replace(/\\/+$/, "");
+    const url = `${websocketBase}/api/?token=${encodeURIComponent(tokens.access)}`;
 
     const socket = new WebSocket(url);
     socket.onopen = () => {
