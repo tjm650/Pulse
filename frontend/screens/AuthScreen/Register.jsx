@@ -76,6 +76,7 @@ const Register = () => {
     }
 
     const shortPass = password1.length < 9;
+    const failPassword2 = false;
     if (shortPass) {
       setAuth(true);
       setRes("password too short");
