@@ -153,6 +153,8 @@ class SecureChatConsumer(WebsocketConsumer):
         if image_data:
             if not isinstance(image_data, str):
                 raise ValueError("imageBase64 must be a base64 string")
+            if len(image_data) > ((self.MAX_IMAGE_BYTES + 2) // 3) * 4:
+                raise ValueError("Image exceeds the 5 MB limit")
             try:
                 decoded = base64.b64decode(image_data, validate=True)
             except (binascii.Error, ValueError):
