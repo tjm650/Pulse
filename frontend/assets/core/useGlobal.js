@@ -1950,19 +1950,53 @@ const useGlobal = create(
 
   searchlist: null,
 
-  searchUsers: (query) => {
-    if (query) {
-      const socket = get().socket;
-      socket.send(
-        JSON.stringify({
-          source: "search",
-          query: query,
-        })
-      );
-    } else {
-      set((state) => ({
-        searchlist: null,
-      }));
+  searchUsers: async (query) => {
+    const cleaned = String(query || "").trim();
+    if (cleaned.length < 2) {
+      set({ searchlist: null });
+      return [];
+    }
+
+    try {
+      const response = await api.get("/api/search", {
+        params: { q: cleaned, type: "users", limit: 50 },
+      });
+      const users = response.data?.results?.users || [];
+      const connections = get().ConnectList || [];
+      const requests = get().requestsList || [];
+
+      const results = users.map((profile) => {
+        const connection = connections.find(
+          (item) => item.connect?.id === profile.id
+        );
+        const request = requests.find(
+          (item) =>
+            item.sender?.id === profile.id ||
+            item.receiver?.id === profile.id
+        );
+        let status = "not-connected";
+        if (connection) {
+          status = "connected";
+        } else if (request) {
+          status =
+            request.sender?.id === get().user?.id
+              ? "pending_them"
+              : "pending_me";
+        }
+        return {
+          ...profile,
+          profile_image:
+            profile.profile_image || profile.profile_image_path || null,
+          status,
+        };
+      });
+
+      set({ searchlist: results });
+      return results;
+    } catch (error) {
+      console.error("[Pulse Search] User search failed:", error.message);
+      set({ searchlist: [] });
+      throw error;
     }
   },
 
