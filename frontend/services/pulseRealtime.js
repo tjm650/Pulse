@@ -171,7 +171,7 @@ export async function getDirectConnections() {
     }
   }
 
-  return connections.map((connection) => {
+  return Promise.all(connections.map(async (connection) => {
     const otherId =
       connection.sender_id === userId ? connection.receiver_id : connection.sender_id;
     const connect = profiles.get(otherId) || { id: otherId };
@@ -182,10 +182,10 @@ export async function getDirectConnections() {
       connect,
       preview: latest?.description || "",
       preview_red: latest?.red ?? false,
-      image: latest?.image_path ? null : null,
+      image: await getSignedImageUrl(latest?.image_path),
       updated: latest?.created_at || connection.updated_at,
     };
-  });
+  }));
 }
 
 export async function sendDirectMessage(details) {
