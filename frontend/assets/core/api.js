@@ -1,5 +1,6 @@
 import axios from "axios";
 import secure from "./secure";
+import { supabase } from "@/services/supabase";
 
 import Constants from 'expo-constants';
 
@@ -46,15 +47,16 @@ api.interceptors.response.use(
         const tokens = await secure.get("tokens");
         if (tokens?.refresh) {
           const response = await axios.post(`http://${ADDRESS}/api/token/refresh/`, {
-            refresh: response.data.refresh || tokens.refresh,
+            refresh: tokens.refresh,
           });
 
           const newTokens = {
             access: response.data.access,
-            refresh: tokens.refresh,
+            refresh: response.data.refresh || tokens.refresh,
           };
 
           await secure.set("tokens", newTokens);
+          await supabase.auth.setSession({ access_token: newTokens.access, refresh_token: newTokens.refresh });
 
           originalRequest.headers.Authorization = `Bearer ${newTokens.access}`;
           return api(originalRequest);
