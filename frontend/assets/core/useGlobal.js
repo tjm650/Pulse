@@ -3,6 +3,10 @@ import { supabase } from "@/services/supabase";
 import {
   getDirectMessages,
   getDirectConnections,
+  getConnectionRequests,
+  requestOrAcceptConnection,
+  acceptConnectionRequest,
+  deleteConnectionRequest,
   sendDirectMessage,
   markDirectMessagesRead,
   getGroupConnections,
@@ -1716,8 +1720,11 @@ const useGlobal = create(
       },
       onConnectionChange: async () => {
         try {
-          const connections = await getDirectConnections();
-          set({ ConnectList: connections });
+          const [connections, requests] = await Promise.all([
+            getDirectConnections(),
+            getConnectionRequests(),
+          ]);
+          set({ ConnectList: connections, requestsList: requests });
         } catch (error) {
           console.error("[Pulse Realtime] Connection refresh failed:", error.message);
         }
@@ -1749,6 +1756,57 @@ const useGlobal = create(
           switch (event.source) {
             case "connect.list": {
               set({ ConnectList: await getDirectConnections() });
+              break;
+            }
+            case "request.connect": {
+              const result = await requestOrAcceptConnection(event.username);
+              const [connections, requests] = await Promise.all([
+                getDirectConnections(),
+                getConnectionRequests(),
+              ]);
+              set({ ConnectList: connections, requestsList: requests });
+              if (Array.isArray(get().searchlist)) {
+                set({
+                  searchlist: get().searchlist.map((item) =>
+                    item.username === event.username
+                      ? { ...item, status: result.status }
+                      : item
+                  ),
+                });
+              }
+              break;
+            }
+            case "request.accept": {
+              await acceptConnectionRequest(event.username);
+              const [connections, requests] = await Promise.all([
+                getDirectConnections(),
+                getConnectionRequests(),
+              ]);
+              set({ ConnectList: connections, requestsList: requests });
+              if (Array.isArray(get().searchlist)) {
+                set({
+                  searchlist: get().searchlist.map((item) =>
+                    item.username === event.username
+                      ? { ...item, status: "connected" }
+                      : item
+                  ),
+                });
+              }
+              break;
+            }
+            case "request.delete": {
+              await deleteConnectionRequest(event.username);
+              const requests = await getConnectionRequests();
+              set({ requestsList: requests });
+              if (Array.isArray(get().searchlist)) {
+                set({
+                  searchlist: get().searchlist.map((item) =>
+                    item.username === event.username
+                      ? { ...item, status: "not-connected" }
+                      : item
+                  ),
+                });
+              }
               break;
             }
             case "message.list": {
@@ -1817,21 +1875,23 @@ const useGlobal = create(
       socket: realtimeAdapter,
     });
 
-    const [connections, groups, allNotifications, unreadNotifications] =
+    const [connections, requests, groups, allNotifications, unreadNotifications] =
       await Promise.allSettled([
         getDirectConnections(),
+        getConnectionRequests(),
         getGroupConnections(),
         getUserNotifications(false),
         getUserNotifications(true),
       ]);
     set({
       ConnectList: connections.status === "fulfilled" ? connections.value : [],
+      requestsList: requests.status === "fulfilled" ? requests.value : [],
       GroupConnectList: groups.status === "fulfilled" ? groups.value : [],
       usernotifList: allNotifications.status === "fulfilled" ? allNotifications.value : [],
       usernotifListUnread:
         unreadNotifications.status === "fulfilled" ? unreadNotifications.value : [],
     });
-    [connections, groups, allNotifications, unreadNotifications]
+    [connections, requests, groups, allNotifications, unreadNotifications]
       .filter((result) => result.status === "rejected")
       .forEach((result) =>
         console.error("[Pulse Realtime] Initial data load failed:", result.reason?.message)
