@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from api.serializers import UserSerializer
+from api.serializers import PublicPublicUserSerializer
 from .models import Post, Comment
 
 
@@ -36,14 +36,14 @@ class PostSerializer(serializers.ModelSerializer):
         ]
 
     def get_sender(self, obj):
-        return UserSerializer(obj.sender).data
+        return PublicUserSerializer(obj.sender).data
 
     def get_likes(self, obj):
 
         values = obj.likes.all()
         for v in values:
             # if v == selfuser:
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_likes_count(self, obj):
 
@@ -76,7 +76,7 @@ class PostSerializer(serializers.ModelSerializer):
     def get_interactions(self, obj):
         values = obj.interactions.all()
         for v in values:
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_user_interacted(self, obj):
         selfuser = self.context["user"]
@@ -124,7 +124,7 @@ class CommentSerializer(serializers.ModelSerializer):
         ]
 
     def get_sender(self, obj):
-        return UserSerializer(obj.sender).data
+        return PublicUserSerializer(obj.sender).data
 
     def get_likes_count(self, obj):
         return obj.likes.all().count()
@@ -138,7 +138,7 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_interactions(self, obj):
         values = obj.interactions.all()
         for v in values:   
-            return UserSerializer(v).data
+            return PublicUserSerializer(v).data
 
     def get_interactions_count(self, obj):
         values = obj.interactions.all().count()
