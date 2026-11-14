@@ -359,7 +359,9 @@ const useGlobal = create(
             
             if (tokens?.access) {
               try {
-                await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+                if (supabase) {
+                  await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+                }
                 const response = await api({
                   method: "GET",
                   url: "/api/user/profile",
@@ -430,7 +432,9 @@ const useGlobal = create(
               const user = response.data.user;
               const tokens = response.data.tokens;
 
-              await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+              if (supabase) {
+                  await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+                }
               await secure.set("tokens", tokens);
 
               set((state) => ({
@@ -487,7 +491,9 @@ const useGlobal = create(
                 return { success: false, error: response.data.message || "Check your email to confirm your account", confirmationRequired: true };
               }
 
-              await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+              if (supabase) {
+                  await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+                }
               await secure.set("tokens", tokens);
               
               set((state) => ({
@@ -541,7 +547,7 @@ const useGlobal = create(
             console.error("Sign out error:", error);
           } finally {
             await get().socketClose();
-            await supabase.auth.signOut({ scope: "local" });
+            await supabase?.auth?.signOut({ scope: "local" });
             await secure.remove("credentials");
             await secure.remove("tokens");
             
@@ -1635,7 +1641,7 @@ const useGlobal = create(
 
     const existingChannel = get().realtimeChannel;
     if (existingChannel) {
-      await supabase.removeChannel(existingChannel);
+      await supabase?.removeChannel(existingChannel);
     }
 
     const channel = subscribePulseRealtime({
@@ -1814,7 +1820,7 @@ const useGlobal = create(
   socketClose: async () => {
     const channel = get().realtimeChannel;
     if (channel) {
-      await supabase.removeChannel(channel);
+      await supabase?.removeChannel(channel);
     }
     set({
       realtimeChannel: null,
