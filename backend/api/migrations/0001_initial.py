@@ -125,7 +125,7 @@ class Migration(migrations.Migration):
                 ('sender', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sent_messages', to=settings.AUTH_USER_MODEL)),
             ],
             options={
-                'db_table': 'messages',
+                'db_table': 'api_messages',
                 'ordering': ['created_at'],
             },
         ),
@@ -155,7 +155,6 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='UserAnalytics',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('total_logins', models.PositiveIntegerField(default=0)),
                 ('last_login', models.DateTimeField(blank=True, null=True)),
                 ('total_session_time', models.PositiveIntegerField(default=0)),
@@ -169,7 +168,7 @@ class Migration(migrations.Migration):
                 ('messages_received', models.PositiveIntegerField(default=0)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='analytics', to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='analytics', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'db_table': 'user_analytics',
@@ -178,7 +177,6 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='UserPreference',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('email_notifications', models.BooleanField(default=True)),
                 ('push_notifications', models.BooleanField(default=True)),
                 ('sms_notifications', models.BooleanField(default=False)),
@@ -190,7 +188,7 @@ class Migration(migrations.Migration):
                 ('content_language', models.CharField(default='en', max_length=10)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='preferences', to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='preferences', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'db_table': 'user_preferences',
