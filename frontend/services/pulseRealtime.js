@@ -193,9 +193,6 @@ export async function getDirectConnections() {
 
 export async function sendDirectMessage(details) {
   const userId = await requireUserId();
-  if (details?.image) {
-    throw new Error("Image messages need the secured Supabase Storage upload path, which is being configured separately. Text messages are available now.");
-  }
   const message = String(details?.message || "");
   if ((!message.trim() && !details?.image) || message.length > 10000) {
     throw new Error("Enter a message or attach an image. Text is limited to 10,000 characters.");
