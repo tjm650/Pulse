@@ -17,3 +17,6 @@ Required backend environment:
 - `CORS_ALLOWED_ORIGINS`: comma-separated frontend origins
 
 `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` default to the Pulse Supabase project values and can be overridden through environment variables. Do not put the database password or any service-role key in the frontend.
+
+
+The Supabase schema uses its normalized table and column names. The `database/migrations/20261114_django_orm_compatibility_views.sql` migration supplies updatable, `security_invoker` compatibility views for the preserved Django model table names. `backend.dbrouters.SupabaseSchemaRouter` prevents Django from recreating those Supabase-managed application tables during `migrate`; Django's own framework tables remain migration-managed.
