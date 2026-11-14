@@ -1,4 +1,5 @@
 import api, { ADDRESS } from "@/assets/core/api";
+import { supabase } from "@/services/supabase";
 import secure from "@/assets/core/secure";
 import utils from "@/assets/core/utils";
 import { create } from "zustand";
@@ -365,6 +366,7 @@ const useGlobal = create(
             
             if (tokens?.access) {
               try {
+                await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
                 const response = await api({
                   method: "GET",
                   url: "/api/user/profile",
@@ -489,6 +491,8 @@ const useGlobal = create(
               const user = response.data.user;
               const tokens = response.data.tokens;
               
+              await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
+              await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
               await secure.set("tokens", tokens);
               
               set((state) => ({
@@ -540,6 +544,7 @@ const useGlobal = create(
           } catch (error) {
             console.error("Sign out error:", error);
           } finally {
+            await supabase.auth.signOut();
             await secure.remove("tokens");
             
             set({
