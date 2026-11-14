@@ -86,7 +86,7 @@ REST_FRAMEWORK = {
 
 # --- DATABASE CONFIGURATION (Supabase/Postgres) ---
 
-DATABASE_URL = config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}')
+DATABASE_URL = config("DATABASE_URL")
 
 DATABASES = {
     'default': dj_database_url.config(
