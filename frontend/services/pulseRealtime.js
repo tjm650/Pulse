@@ -644,6 +644,7 @@ export function subscribePulseRealtime({
   onPostChange,
   onBlogChange,
   onServiceNotificationChange,
+  onAppNotificationChange,
 }) {
   if (!supabase) return null;
 
@@ -701,6 +702,9 @@ export function subscribePulseRealtime({
     .on("postgres_changes", { event: "*", schema: "public", table: "service_notification_comment_likes" }, (payload) => onServiceNotificationChange?.(payload))
     .on("postgres_changes", { event: "*", schema: "public", table: "service_notification_comment_interactions" }, (payload) => onServiceNotificationChange?.(payload))
     .on("postgres_changes", { event: "*", schema: "public", table: "polls" }, (payload) => onServiceNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "app_notifications" }, (payload) => onAppNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "app_notification_interactions" }, (payload) => onAppNotificationChange?.(payload))
+    .on("postgres_changes", { event: "*", schema: "public", table: "app_notification_recipients" }, (payload) => onAppNotificationChange?.(payload))
     .subscribe((status, error) => {
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
         console.error("[Pulse Realtime] Channel status:", status, error?.message || "");
