@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS').split(',') if host.strip()]
 
 
@@ -26,7 +26,7 @@ SUPABASE_URL = config("SUPABASE_URL", default="https://xypngvumzhzhyvclfmyq.supa
 SUPABASE_PUBLISHABLE_KEY = config("SUPABASE_PUBLISHABLE_KEY")
 
 # CORS Settings (unchanged)
-CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool)
 CORS_ALLOW_CREDENTIALS = True
 cors_origins = config('CORS_ALLOWED_ORIGINS')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
