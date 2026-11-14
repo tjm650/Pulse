@@ -14,6 +14,7 @@ from django.core.paginator import Paginator
 from django.http import Http404
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -124,6 +125,10 @@ class UserSignUp(BaseAPIView):
             return Response({"error": "Missing required fields", "fields": missing}, status=status.HTTP_400_BAD_REQUEST)
         if len(data["password"]) < 8:
             return Response({"error": "Password too short", "message": "Password must contain at least 8 characters"}, status=status.HTTP_400_BAD_REQUEST)
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,100}", data["username"]):
+            return Response({"error": "Invalid username", "message": "Username must be 3-100 characters and use only letters, numbers, dots, underscores or hyphens"}, status=status.HTTP_400_BAD_REQUEST)
+        if len(data["first_name"]) < 2 or len(data["last_name"]) < 2:
+            return Response({"error": "Invalid name", "message": "First and last names must contain at least 2 characters"}, status=status.HTTP_400_BAD_REQUEST)
         if User.objects.filter(username__iexact=data["username"]).exists():
             return Response({"error": "Username taken", "message": "This username is already taken"}, status=status.HTTP_400_BAD_REQUEST)
         if User.objects.filter(email__iexact=data["email"]).exists():
