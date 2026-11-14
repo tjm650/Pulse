@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.core.validators import MinLengthValidator
 from django.utils import timezone
 import uuid
@@ -13,11 +14,21 @@ def upload_images(instance, filename):
         return path
 
 
-class User(models.Model):
+class SupabaseProfileManager(BaseUserManager):
+    def create_user(self, *args, **kwargs):
+        raise NotImplementedError("Create accounts through Supabase Auth.")
+
+    def create_superuser(self, *args, **kwargs):
+        raise NotImplementedError("Create and manage identities through Supabase Auth.")
+
+
+class User(AbstractBaseUser):
     """
     Application profile linked to a Supabase Auth identity.
     Supabase Auth owns credentials; this model only maps public.profiles.
     """
+    objects = SupabaseProfileManager()
+
     id = models.UUIDField(primary_key=True, editable=False)
     username = models.CharField(max_length=100, unique=True)
     email = models.EmailField(max_length=254)
@@ -66,14 +77,6 @@ class User(models.Model):
 
     def __str__(self):
         return f"{self.username} ({self.first_name} {self.last_name})"
-
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
 
     @property
     def full_name(self):
