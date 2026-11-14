@@ -30,7 +30,7 @@ import utils from "@/assets/core/utils";
 import { Entypo, Ionicons } from "@expo/vector-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { useNavigation } from "@react-navigation/native";
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import EmptyScreen from "../../GlobalScreens/EmptyScreen";
 import InputMessage from "../../GlobalScreens/InputMessage";
 import MessageView from "../../GlobalScreens/MessageView";
@@ -188,7 +188,10 @@ const GroupInbox = ({ route }) => {
   const [grpmessage, setGrpMessage] = useState("");
 
   const groupMessageSend = useGlobal((state) => state.groupMessageSend);
-  const groupMessageType = useGlobal((state) => state.GroupMessageType);
+  const groupMessageType = useGlobal((state) => state.groupMessageType);
+  const groupTyping = useGlobal((state) => state.GroupMessagesTyping);
+  const typingTimer = useRef(null);
+  const [isTyping, setIsTyping] = useState(false);
   const chatsList = useGlobal((state) => state.chatsList);
   const ChatsMembers = useGlobal((state) => state.ChatsMembers);
   const GroupChatList = useGlobal((state) => state.GroupChatList);
@@ -200,13 +203,23 @@ const GroupInbox = ({ route }) => {
     console.log("onsend", cleaned);
     if (cleaned.length === 0) return;
     groupMessageSend(grpConnId, grpmessage);
+    groupMessageType(grpConnId, false);
+    setIsTyping(false);
     setGrpMessage("");
   }
 
   ////////////////// onType //////////////////
   function onType(value) {
     setGrpMessage(value);
-    //groupMessageType(grpconnect.username);
+    if (!isTyping) {
+      setIsTyping(true);
+      groupMessageType(grpConnId, true);
+    }
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(() => {
+      setIsTyping(false);
+      groupMessageType(grpConnId, false);
+    }, 2000);
   }
 
   useLayoutEffect(() => {
@@ -224,7 +237,11 @@ const GroupInbox = ({ route }) => {
 
   useEffect(() => {
     GroupChatList(grpConnId);
-  }, []);
+    return () => {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      groupMessageType(grpConnId, false);
+    };
+  }, [grpConnId]);
 
   return (
     <SafeAreaView
@@ -244,6 +261,11 @@ const GroupInbox = ({ route }) => {
             : DCommunity.CInbox.backgroundImage.image1
         }
       />
+      {groupTyping ? (
+        <Text style={{ paddingHorizontal: 16, paddingVertical: 6, color: isLight ? LGlobals.text : DGlobals.text }}>
+          {groupTyping.username} is typing…
+        </Text>
+      ) : null}
       {!chatsList ? (
         <View
           style={{
