@@ -153,7 +153,9 @@ class PollModel {
     this.extra_data = data.extra_data || {};
     this.title = this.extra_data.title || 'Poll';
     this.poll_type = this.extra_data.poll_type || 'single'; // 'single' or 'multiple'
-    this.poll_sections = this.extra_data.poll_sections || [];
+    this.poll_sections = data.poll_sections || this.extra_data.poll_sections || [];
+    this.unique_voter_count = data.unique_voter_count || 0;
+    this.total_votes = data.total_votes || 0;
     this.poll_description = this.extra_data.description || '';
 
     // Computed fields
@@ -188,7 +190,7 @@ class PollModel {
   hasUserVoted() {
     return this.poll_sections.some(section =>
       section.items.some(item =>
-        item.user_ids && item.user_ids.includes(this.getCurrentUserId())
+        item.user_voted === true || (item.user_ids && item.user_ids.includes(this.getCurrentUserId()))
       )
     );
   }
@@ -200,7 +202,7 @@ class PollModel {
 
     this.poll_sections.forEach((section, sectionIndex) => {
       section.items.forEach((item, itemIndex) => {
-        if (item.user_ids && item.user_ids.includes(userId)) {
+        if (item.user_voted === true || (item.user_ids && item.user_ids.includes(userId))) {
           indices.push(this.getGlobalOptionIndex(sectionIndex, itemIndex));
         }
       });
@@ -324,15 +326,7 @@ class PollModel {
 
   // Get count of unique voters
   getUniqueVoterCount() {
-    const allUserIds = new Set();
-    this.poll_sections.forEach(section => {
-      section.items.forEach(item => {
-        if (item.user_ids) {
-          item.user_ids.forEach(userId => allUserIds.add(userId));
-        }
-      });
-    });
-    return allUserIds.size;
+    return this.unique_voter_count;
   }
 
   // Get most active section (by total votes)
