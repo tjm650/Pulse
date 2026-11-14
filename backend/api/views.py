@@ -101,7 +101,8 @@ class UserSignIn(BaseAPIView):
             session = _supabase_auth_request("token?grant_type=password", {"email": user.email, "password": password})
             user.is_online = True
             user.last_seen = timezone.now()
-            user.save(update_fields=["is_online", "last_seen"])
+            user.last_login = timezone.now()
+            user.save(update_fields=["is_online", "last_seen", "last_login"])
             analytics, _ = UserAnalytics.objects.get_or_create(user=user)
             analytics.total_logins += 1
             analytics.last_login = timezone.now()
