@@ -545,7 +545,7 @@ const useGlobal = create(
           } catch (error) {
             console.error("Sign out error:", error);
           } finally {
-            await supabase.auth.signOut();
+            await supabase.auth.signOut({ scope: "local" });
             await secure.remove("credentials");
             await secure.remove("tokens");
             
