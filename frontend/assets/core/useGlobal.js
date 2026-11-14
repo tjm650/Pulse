@@ -2678,73 +2678,69 @@ const useGlobal = create(
   //----------------------------------------
   appNotifList: [],
   appNotifNext: null,
-  appNotif: (page = 0) => {
-    if (page === 0) {
-      set((state) => ({
-        appNotifList: [],
-        appNotifNext: null,
-      }));
-    } else {
-      set((state) => ({
-        appNotifList: [],
-        appNotifNext: null,
-      }));
-    }
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "app.notif.list",
-        page: page,
-      })
-    );
+  appNotif: async (page = 0) => {
+    if (page === 0) set({ appNotifList: [], appNotifNext: null });
+    const response = await api.get("/app_notif/Notif/", { params: { page: page || 1 } });
+    const rows = response.data?.results || response.data || [];
+    const nextUrl = response.data?.next;
+    const nextPage = nextUrl ? Number(nextUrl.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+    set({
+      appNotifList: page ? [...get().appNotifList, ...rows] : rows,
+      appNotifNext: nextPage,
+    });
+    return rows;
   },
 
   //----------------------------------------
   //           app notif interact
   //----------------------------------------
-  appNotifInteract: (userId, appNotifId) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "app.notif.interactions",
-        appNotifId: appNotifId,
-        action: "interaction",
-        userId: userId,
-      })
-    );
+  appNotifInteract: async (userId, appNotifId) => {
+    const response = await api.post(`/app_notif/Notif/${appNotifId}/interact/`);
+    set({
+      appNotifList: get().appNotifList.map((item) =>
+        item.id === appNotifId
+          ? { ...item, user_interacted: response.data.interacted, interactions_count: response.data.interactions_count }
+          : item
+      ),
+    });
+    return response.data;
   },
 
   //----------------------------------------
   //           app report Send
   //----------------------------------------
-  appReport: (details) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "app.report.send",
-        userId: details.userId,
-        subject: details.subject,
-        description: details.description,
-        imageBase64: details.image ? details.image.base64 : null,
-        imageFilename: details.image ? details.image.fileName : null,
-      })
-    );
+  appReport: async (details) => {
+    const form = new FormData();
+    form.append("subject", String(details.subject || ""));
+    form.append("description", String(details.description || ""));
+    if (details.image?.uri) {
+      form.append("image", {
+        uri: details.image.uri,
+        name: details.image.fileName || details.image.name || "report-image.jpg",
+        type: details.image.mimeType || details.image.type || "image/jpeg",
+      });
+    }
+    return (await api.post("/app_notif/Report/", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })).data;
   },
 
   //----------------------------------------
   //           app feedback send
   //----------------------------------------
-  appFeedback: (details) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "app.feedback.send",
-        userId: details.userId,
-        description: details.description,
-        imageBase64: details.image ? details.image.base64 : null,
-        imageFilename: details.image ? details.image.fileName : null,
-      })
-    );
+  appFeedback: async (details) => {
+    const form = new FormData();
+    form.append("description", String(details.description || ""));
+    if (details.image?.uri) {
+      form.append("image", {
+        uri: details.image.uri,
+        name: details.image.fileName || details.image.name || "feedback-image.jpg",
+        type: details.image.mimeType || details.image.type || "image/jpeg",
+      });
+    }
+    return (await api.post("/app_notif/Feedback/", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })).data;
   },
 
   //--------------------
@@ -2756,46 +2752,35 @@ const useGlobal = create(
   appSearchNotif: null,
   appTrendingData: null,
   // isLoading: false,
-  appSearchAll: (val) => {
-    if (val) {
-      set((state) => ({
-        // isLoading: true,
-        appSearchList: [],
-        appSearchUserList: [],
-        appSearchBlogList: [],
-        appSearchPostList: [],
-        appSearchNotif: [],
-      }));
-    } else {
-      set((state) => ({
-        // isLoading: false,
-        // appSearchList: null,
+  appSearchAll: async (val) => {
+    const query = String(val || "").trim();
+    if (query.length < 2) {
+      set({
         appSearchUserList: null,
         appSearchBlogList: null,
         appSearchPostList: null,
         appSearchNotif: null,
-        appTrendingData: null,
-      }));
+      });
+      return null;
     }
-
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "app.search",
-        query: val,
-      })
-    );
+    const response = await api.get("/api/search", {
+      params: { q: query, type: "all", limit: 30 },
+    });
+    const results = response.data?.results || {};
+    set({
+      appSearchUserList: results.users || [],
+      appSearchBlogList: results.blogs || [],
+      appSearchPostList: results.posts || [],
+      appSearchNotif: results.notifications || [],
+    });
+    return results;
   },
 
-  appGetTrending: () => {
-    const socket = get().socket;
-    if (socket) {
-      socket.send(
-        JSON.stringify({
-          source: "app.trending",
-        })
-      );
-    } 
+  appGetTrending: async () => {
+    const response = await api.get("/api/trending");
+    const trending = response.data?.trending || [];
+    set({ appTrendingData: trending });
+    return trending;
   },
 
   //----------------------------------------
