@@ -18,7 +18,7 @@ import re
 from datetime import datetime, timedelta
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from urllib.request import Request as URLRequest, urlopen
@@ -26,7 +26,7 @@ from urllib.error import HTTPError, URLError
 
 from .models import User, UserPreference, UserAnalytics, CommunityDirectory, Message, Notification, UserSession
 from .serializers import (
-    UserSerializer, CommunityDirectorySerializer, MessageSerializer, NotificationSerializer,
+    UserSerializer, PublicUserSerializer, CommunityDirectorySerializer, MessageSerializer, NotificationSerializer,
     AdminPostSerializer, AdminCommentSerializer, AdminMessageSerializer, AdminNotificationSerializer
 )
 from auserpost.models import Post, Comment
@@ -288,10 +288,14 @@ class UserPreferences(BaseAPIView):
             data = json.loads(request.body)
             preferences, created = UserPreference.objects.get_or_create(user=request.user)
             
-            # Update preferences
-            for field, value in data.items():
-                if hasattr(preferences, field):
-                    setattr(preferences, field, value)
+            # Only allow user-editable preference fields; never accept model/internal fields.
+            allowed_fields = {
+                'email_notifications', 'push_notifications', 'sms_notifications',
+                'profile_visibility', 'show_online_status', 'allow_messages_from',
+                'auto_play_videos', 'show_trending_content', 'content_language',
+            }
+            for field in allowed_fields.intersection(data):
+                setattr(preferences, field, data[field])
             
             preferences.save()
             
@@ -529,8 +533,12 @@ class SearchView(BaseAPIView):
                     Q(first_name__icontains=query) |
                     Q(last_name__icontains=query) |
                     Q(bio__icontains=query)
-                ).filter(is_active=True)[:limit]
-                results['users'] = UserSerializer(users, many=True).data
+                ).filter(is_active=True).filter(
+                    Q(preferences__profile_visibility='public') |
+                    Q(preferences__isnull=True) |
+                    Q(pk=request.user.pk)
+                ).distinct()[:limit]
+                results['users'] = PublicUserSerializer(users, many=True).data
             
             if search_type in ['all', 'communities']:
                 communities = CommunityDirectory.objects.filter(
@@ -661,7 +669,7 @@ class CompleteSignupDetails(BaseAPIView):
 
 # Admin views for admin panel
 class AdminUsersView(BaseAPIView):
-    permission_classes = [IsAuthenticated]  # In production, add admin-only permission
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         try:
@@ -733,7 +741,7 @@ class AdminUsersView(BaseAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminUserDetailView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request, user_id):
         try:
@@ -794,7 +802,7 @@ class AdminUserDetailView(BaseAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminPostsView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         try:
@@ -838,7 +846,7 @@ class AdminPostsView(BaseAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminPostDetailView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def delete(self, request, post_id):
         try:
@@ -858,7 +866,7 @@ class AdminPostDetailView(BaseAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminMessagesView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         try:
@@ -902,7 +910,7 @@ class AdminMessagesView(BaseAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminMessageDetailView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def delete(self, request, message_id):
         try:
@@ -922,7 +930,7 @@ class AdminMessageDetailView(BaseAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminNotificationsView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         try:
@@ -970,7 +978,7 @@ class AdminNotificationsView(BaseAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminNotificationDetailView(BaseAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def delete(self, request, notification_id):
         try:
