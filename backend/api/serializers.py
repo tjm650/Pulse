@@ -157,7 +157,7 @@ class MessageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'sender', 'created_at', 'updated_at', 'read_at']
 
 class NotificationSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(read_only=True)
+    sender = PublicUserSerializer(read_only=True)
     
     class Meta:
         model = Notification
