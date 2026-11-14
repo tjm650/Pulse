@@ -67,21 +67,9 @@ DATABASES = {
 }
 
 
-# --- CHANNELS / ASGI CONFIGURATION ---
-ASGI_APPLICATION = "backend.asgi.application"
-# Render currently runs a single free instance. In-memory channels are suitable
-# for initial functional verification only; use Redis for multi-instance production.
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
-}
-
-
 # --- APPLICATION DEFINITION ---
 
 INSTALLED_APPS = [
-    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -90,7 +78,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    "channels",
     'ablog',
     'afollows',
     'amessages',
