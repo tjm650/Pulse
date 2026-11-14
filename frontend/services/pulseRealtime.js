@@ -52,10 +52,14 @@ export async function subscribeTyping(conversationId, isGroup, onTyping) {
     typingTimeouts.set(topic, timeout);
   });
 
-  channel.subscribe((status, error) => {
-    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-      console.warn("[Pulse Realtime] Typing channel unavailable:", error?.message || status);
-    }
+  await new Promise((resolve) => {
+    channel.subscribe((status, error) => {
+      if (status === "SUBSCRIBED") resolve();
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn("[Pulse Realtime] Typing channel unavailable:", error?.message || status);
+        resolve();
+      }
+    });
   });
 
   typingChannels.set(topic, channel);
