@@ -19,8 +19,6 @@ SUPABASE_MANAGED_APPS = {
     "auserpost",
     "community",
     "quercus",
-    "rest_framework_simplejwt",
-    "token_blacklist",
 }
 
 
