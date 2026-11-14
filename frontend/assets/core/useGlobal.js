@@ -1614,7 +1614,7 @@ const useGlobal = create(
     const websocketBase = API_BASE_URL
       .replace(/^https:/i, "wss:")
       .replace(/^http:/i, "ws:")
-      .replace(/\\/+$/, "");
+      .replace(/\/+$/, "");
     const url = `${websocketBase}/api/?token=${encodeURIComponent(tokens.access)}`;
 
     const socket = new WebSocket(url);
