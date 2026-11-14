@@ -97,6 +97,8 @@ class SecureChatConsumer(WebsocketConsumer):
             handler(data)
         except (Connection.DoesNotExist, GroupCon.DoesNotExist):
             self._error("not_found", "The requested conversation was not found.")
+        except PermissionError:
+            self._error("forbidden", "You are not a participant in this conversation.")
         except (TypeError, ValueError, KeyError):
             self._error("invalid_payload", "One or more event fields are invalid.")
 
