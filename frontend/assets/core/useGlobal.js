@@ -2011,65 +2011,66 @@ const useGlobal = create(
   DailyBlogList: [],
   blogsNext: null,
   BlogsUsername: null,
-  BlogList: (blogse, page = 0) => {
-    if (page === 0) {
-      set((state) => ({
-        DailyBlogList: [],
-        blogsNext: null,
-        BlogsUsername: null,
-      }));
-    } else {
-      set((state) => ({
-        blogsNext: null,
-      }));
+  BlogList: async (blogse, page = 0) => {
+    if (page === 0) set({ DailyBlogList: [], blogsNext: null, BlogsUsername: null });
+    try {
+      const response = await api.get("/ablog/Blog/", { params: { page: page || 1 } });
+      const rows = response.data?.results || response.data || [];
+      const next = response.data?.next;
+      const nextPage = next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+      set({
+        DailyBlogList: page ? [...get().DailyBlogList, ...rows] : rows,
+        blogsNext: nextPage,
+      });
+      return rows;
+    } catch (error) {
+      console.error("[Pulse Blogs] Load failed:", error.message);
+      throw error;
     }
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "blog.list",
-        // blogse: blogse,
-        page: page,
-      })
-    );
   },
 
-  blogSend: (details, file) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "blog.send",
-        UserId: details.UserId,
-        imageBase64: details.image ? details.image.base64 : null,
-        imageFilename: details.image ? details.image.fileName : null,
-        tags: details.tags,
-        directoryId: details.directoryId,
-        description: details.description,
-      })
-    );
+  blogSend: async (details, file) => {
+    const form = new FormData();
+    form.append("service_id", String(details.directoryId || details.serviceId || ""));
+    form.append("description", String(details.description || ""));
+    const image = details.image || file;
+    if (image?.uri) {
+      form.append("image", {
+        uri: image.uri,
+        name: image.fileName || image.fileName || "blog-image.jpg",
+        type: image.mimeType || image.type || "image/jpeg",
+      });
+    }
+    (details.tags || []).forEach((tag) => form.append("tags", String(tag.id || tag)));
+    const response = await api.post("/ablog/Blog/", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    set({ DailyBlogList: [response.data, ...get().DailyBlogList] });
+    return response.data;
   },
 
-  blogInteraction: (blogId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "blog.interactions",
-        action: action,
-        blogId: blogId,
-        userId: userId,
-      })
-    );
+  blogInteraction: async (blogId, userId, action) => {
+    const response = await api.post(`/ablog/Blog/${blogId}/interact/`, { action });
+    set({
+      DailyBlogList: get().DailyBlogList.map((item) =>
+        item.id === blogId
+          ? { ...item, user_interacted: response.data.interacted, interactions_count: response.data.interactions_count }
+          : item
+      ),
+    });
+    return response.data;
   },
 
-  blogShared: (blogId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "blog.shared",
-        action: action,
-        blogId: blogId,
-        userId: userId,
-      })
-    );
+  blogShared: async (blogId, userId, action) => {
+    const response = await api.post(`/ablog/Blog/${blogId}/share/`, { action });
+    set({
+      DailyBlogList: get().DailyBlogList.map((item) =>
+        item.id === blogId
+          ? { ...item, user_shared: response.data.shared, shared_count: response.data.shares_count }
+          : item
+      ),
+    });
+    return response.data;
   },
 
   /////////////////////////////////////////// Posts ///////////////////////////
@@ -2078,86 +2079,73 @@ const useGlobal = create(
 
   PostList: [],
   PostsNext: null,
-  postsList: (page = 0) => {
-    if (page === 0) {
-      set((state) => ({
-        PostList: [],
-        PostsNext: null,
-      }));
-    } else {
-      set((state) => ({
-        PostsNext: null,
-      }));
+  postsList: async (page = 0) => {
+    if (page === 0) set({ PostList: [], PostsNext: null });
+    try {
+      const response = await api.get("/auserpost/Post/", { params: { page: page || 1 } });
+      const rows = response.data?.results || response.data || [];
+      const next = response.data?.next;
+      const nextPage = next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || (Number(page || 1) + 1)) : null;
+      set({
+        PostList: page ? [...get().PostList, ...rows] : rows,
+        PostsNext: nextPage,
+      });
+      return rows;
+    } catch (error) {
+      console.error("[Pulse Posts] Load failed:", error.message);
+      throw error;
     }
-
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "post.list",
-        page: page,
-      })
-    );
   },
 
-  postSend: (details, file) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "post.send",
-        userId: details.userId,
-        imageBase64: details.image ? details.image.base64 : null,
-        imageFilename: details.image ? details.image.fileName : null,
-        description: details.description,
-      })
-    );
+  postSend: async (details, file) => {
+    const form = new FormData();
+    form.append("description", String(details.description || ""));
+    const image = details.image || file;
+    if (image?.uri) {
+      form.append("image", {
+        uri: image.uri,
+        name: image.fileName || image.fileName || "post-image.jpg",
+        type: image.mimeType || image.type || "image/jpeg",
+      });
+    }
+    const response = await api.post("/auserpost/Post/", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    const created = response.data?.post || response.data;
+    set({ PostList: [created, ...get().PostList] });
+    return created;
   },
 
-  postLike: (postId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "post.likes",
-        action: action,
-        postId: postId,
-        userId: userId,
-      })
-    );
+  postLike: async (postId, userId, action) => {
+    const response = await api.post(`/auserpost/Post/${postId}/like/`, { action });
+    set({
+      PostList: get().PostList.map((item) =>
+        item.id === postId
+          ? { ...item, user_liked: response.data.liked, likes_count: response.data.likes_count }
+          : item
+      ),
+    });
+    return response.data;
   },
 
-  postInteraction: (postId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "post.interactions",
-        action: action,
-        postId: postId,
-        userId: userId,
-      })
-    );
+  postInteraction: async (postId, userId, action) => {
+    const response = await api.post(`/auserpost/Post/${postId}/interact/`, { action });
+    set({
+      PostList: get().PostList.map((item) =>
+        item.id === postId
+          ? { ...item, user_interacted: response.data.interacted, interactions_count: response.data.interactions_count }
+          : item
+      ),
+    });
+    return response.data;
   },
 
-  commentInteraction: (postId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "comment.interactions",
-        action: action,
-        postId: postId,
-        userId: userId,
-      })
-    );
+  commentInteraction: async (commentId, userId, action) => {
+    return (await api.post(`/auserpost/Comment/${commentId}/interact/`, { action })).data;
   },
 
-  commentLike: (postId, userId, action) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "comment.likes",
-        action: action,
-        postId: postId,
-        userId: userId,
-      })
-    );
+  commentLike: async (commentId, userId, action) => {
+    return (await api.post(`/auserpost/Comment/${commentId}/like/`, { action })).data;
   },
 
   PostCommentsList: [],
@@ -2173,26 +2161,23 @@ const useGlobal = create(
         PostsCommentsNext: null,
       }));
     }
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "comment.list",
-        postId: postId,
-        page: page,
-      })
-    );
+    api.get("/auserpost/Comment/", { params: { post: postId, page } }).then((response) => {
+      const rows = response.data?.results || response.data || [];
+      const next = response.data?.next;
+      set({
+        PostCommentsList: page > 1 ? [...get().PostCommentsList, ...rows] : rows,
+        PostsCommentsNext: next ? Number(next.match(/[?&]page=(\\d+)/)?.[1] || page + 1) : null,
+      });
+    }).catch((error) => console.error("[Pulse Posts] Comment load failed:", error.message));
   },
 
-  sendPostComment: (details) => {
-    const socket = get().socket;
-    socket.send(
-      JSON.stringify({
-        source: "comment.send",
-        userId: details.userId,
-        postId: details.postId,
-        description: details.description,
-      })
-    );
+  sendPostComment: async (details) => {
+    const response = await api.post("/auserpost/Comment/", {
+      post: details.postId,
+      description: details.description,
+    });
+    set({ PostCommentsList: [response.data, ...get().PostCommentsList] });
+    return response.data;
   },
 
   /////////////////////////////////////////// Notfications ///////////////////////////
