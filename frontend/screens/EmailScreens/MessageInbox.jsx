@@ -185,6 +185,7 @@ const MesssageInbox = ({ route }) => {
   const messageSend = useGlobal((state) => state.messageSend);
   const messageList = useGlobal((state) => state.messageList);
   const messageType = useGlobal((state) => state.messageType);
+  const closeMessageTyping = useGlobal((state) => state.closeMessageTyping);
   const MessagesTyping = useGlobal((state) => state.MessagesTyping);
   const messageRed = useGlobal((state) => state.messageRed);
 
@@ -432,7 +433,7 @@ const MesssageInbox = ({ route }) => {
       if (typingTimeout) {
         clearTimeout(typingTimeout);
       }
-      messageType(connectionId, false);
+      closeMessageTyping(connectionId);
     };
   }, [typingTimeout, connectionId]);
 
