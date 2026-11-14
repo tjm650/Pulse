@@ -27,7 +27,9 @@ function responseGroupMessageSend(set, get, data) {
 
   const GroupConnectList = [...get().GroupConnectList];
   const ConnectIndex = GroupConnectList.findIndex(
-    (item) => (item.grpconnect || item.group_chats_sender)?.username === username
+    (item) =>
+      item.id === data.grpmessage.connection_id ||
+      (item.grpconnect || item.group_chats_sender)?.username === username
   );
   if (ConnectIndex >= 0) {
     const item = GroupConnectList[ConnectIndex];
