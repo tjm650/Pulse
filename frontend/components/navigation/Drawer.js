@@ -140,7 +140,7 @@ export default function Drawer() {
           },
           drawerIcon: () => <DrawerProfileRB />,
         }}
-        name={`${user.name}`}
+        name="Main"
         component={BottomNav}
       />
     </Drawer.Navigator>
