@@ -34,9 +34,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor to handle token refresh
@@ -50,9 +48,18 @@ api.interceptors.response.use(
       hasHttpResponse: Boolean(error.response),
       responseStatus: error.response?.status,
     });
-    const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const originalRequest = error.config;
+    const requestUrl = originalRequest?.url || "";
+    const isSignInRequest = /(?:^|\/)api\/signin\/?(?:\?|$)/i.test(requestUrl);
+
+    // Invalid sign-in credentials are an expected 401 response, not an expired session.
+    if (
+      error.response?.status === 401 &&
+      !isSignInRequest &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
 
       try {
@@ -77,7 +84,6 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
-        // Clear invalid tokens
         if (supabase) {
           await supabase.auth.signOut({ scope: "local" });
         }
