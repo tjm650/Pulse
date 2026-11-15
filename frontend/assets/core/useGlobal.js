@@ -631,8 +631,10 @@ const useGlobal = create(
 
             return { success: true, user: updatedUser };
           } catch (error) {
+            console.error("[Pulse] Signup details/profile update failed:", error);
             const message =
               error.response?.data?.message ||
+              error.message ||
               "Unable to save your details. Please try again.";
 
             set((state) => ({
