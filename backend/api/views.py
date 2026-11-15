@@ -691,11 +691,21 @@ class CompleteSignupDetails(BaseAPIView):
     
     def post(self, request):
         try:
-            data = json.loads(request.body)
+            data = request.data
             user = request.user
-            
-            # Update user details
-            allowed_fields = ['bio', 'profession', 'prof_initial', 'program', 'service_name', 'cell']
+
+            # Update the fields submitted by the signup completion screen.
+            allowed_fields = [
+                'first_name',
+                'last_name',
+                'directory_status1',
+                'bio',
+                'profession',
+                'prof_initial',
+                'program',
+                'service_name',
+                'cell',
+            ]
             for field in allowed_fields:
                 if field in data:
                     setattr(user, field, data[field])
