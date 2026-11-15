@@ -578,10 +578,41 @@ const useGlobal = create(
               data: details,
             });
 
+            // Save the submitted names to the authenticated user's Supabase profile
+            // before allowing the app navigator to leave signup completion.
+            if (!supabase) {
+              throw new Error("Supabase is not configured. Your profile was not updated.");
+            }
+
+            const { data: authData, error: authError } = await supabase.auth.getUser();
+            if (authError) throw authError;
+            if (!authData?.user?.id) {
+              throw new Error("Your Supabase session has expired. Please sign in again.");
+            }
+
+            const { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .update({
+                first_name: details.first_name,
+                last_name: details.last_name,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", authData.user.id)
+              .select("id, first_name, last_name")
+              .single();
+
+            if (profileError) throw profileError;
+
+            const fullName = [profile.first_name, profile.last_name]
+              .filter(Boolean)
+              .join(" ")
+              .trim();
+
             const updatedUser = {
               ...(get().user || {}),
               ...(response.data.user || {}),
               ...details,
+              name: fullName,
             };
 
             // A successful completion response unlocks the main app navigator.
