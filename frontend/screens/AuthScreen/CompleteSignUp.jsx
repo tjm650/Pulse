@@ -19,7 +19,6 @@ import { DGlobals } from "@/constants/DarkColor/DGlobals";
 
 //import { Globals } from "../..//Light";
 
-import api from "@/assets/core/api";
 import PickerView from "./PickerView";
 
 const CompleteSignUp = () => {
@@ -49,53 +48,43 @@ const CompleteSignUp = () => {
     { label: "Staff", value: "Staff" },
   ]);
 
-  const handleComplete = (params) => {
-    const failFirstName = !firstName;
+  const handleComplete = async () => {
+    const failFirstName = !firstName.trim();
     if (failFirstName) {
       setFirstNameError("first name Not Provided");
     }
 
-    const failLastName = !lastName;
+    const failLastName = !lastName.trim();
     if (failLastName) {
       setLastNameError("last name Not Provided");
     }
-    // Check email
+
     const failStatus = !value;
     setStatus(value);
     if (failStatus) {
       setStatusError("select status");
     }
+
     if (failFirstName || failLastName || failStatus) {
       return;
     }
 
-    ///////////// Handle Requests /////////////////////////
-    api({
-      method: "POST",
-      url: "/api/completedetails",
-      data: {
-        username: user.username,
-        first_name: firstName,
-        last_name: lastName,
-        directory_status1: value,
-      },
-    })
-      .then((response) => {
-        completeSignUpDetails(user, completedDetails),
-          console.log(`user ${user.username}  completed signup details`);
-        const completedDetails = {
-          username: user.username,
-          first_name: firstName,
-          last_name: lastName,
-          directory_status1: value,
-        };
-        console.log("completedDetails", completedDetails);
-      })
-      .catch((error) => {
-        console.log(
-          `user ${user.username}   failed to complete signup details`
-        );
-      });
+    const completedDetails = {
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      directory_status1: value,
+    };
+
+    const result = await completeSignUpDetails(completedDetails);
+
+    if (result.success) {
+      console.log(`user ${user.username} completed signup details`);
+    } else {
+      console.warn(
+        `user ${user.username} failed to complete signup details:`,
+        result.error
+      );
+    }
   };
 
   useLayoutEffect(() => {
