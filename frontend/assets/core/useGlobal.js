@@ -578,39 +578,21 @@ const useGlobal = create(
               data: details,
             });
 
-            // Save the submitted names to the authenticated user's Supabase profile
-            // before allowing the app navigator to leave signup completion.
-            if (!supabase) {
-              throw new Error("Supabase is not configured. Your profile was not updated.");
-            }
-
-            const { data: authData, error: authError } = await supabase.auth.getUser();
-            if (authError) throw authError;
-            if (!authData?.user?.id) {
-              throw new Error("Your Supabase session has expired. Please sign in again.");
-            }
-
-            const { data: profile, error: profileError } = await supabase
-              .from("profiles")
-              .update({
-                first_name: details.first_name,
-                last_name: details.last_name,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", authData.user.id)
-              .select("id, first_name, last_name")
-              .single();
-
-            if (profileError) throw profileError;
-
-            const fullName = [profile.first_name, profile.last_name]
+            // The authenticated backend endpoint saves the submitted details.
+            // Its successful response confirms the database update; do not block
+            // signup completion on an optional, separately configured Supabase client.
+            const savedUser = response.data?.user || {};
+            const fullName = [
+              savedUser.first_name || details.first_name,
+              savedUser.last_name || details.last_name,
+            ]
               .filter(Boolean)
               .join(" ")
               .trim();
 
             const updatedUser = {
               ...(get().user || {}),
-              ...(response.data.user || {}),
+              ...savedUser,
               ...details,
               name: fullName,
             };
