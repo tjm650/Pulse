@@ -138,9 +138,9 @@ export default function Drawer() {
             height: 50,
             marginBottom: "2%",
           },
-          drawerIcon: () => <DrawerProfileRB />,
+          drawerIcon: () => <DrawerProfileRB />,\n          drawerLabel: user?.name?.trim() || "Home",
         }}
-        name={`${user.name}`}
+        name="Main"
         component={BottomNav}
       />
     </Drawer.Navigator>
