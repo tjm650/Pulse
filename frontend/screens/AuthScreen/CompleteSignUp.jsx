@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { useNavigation } from "@react-navigation/native";
 import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
+  ActivityIndicator,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -38,6 +39,7 @@ const CompleteSignUp = () => {
   const completeSignUpDetails = useGlobal(
     (state) => state.completeSignUpDetails
   );
+  const isLoading = useGlobal((state) => state.appState.isLoading);
 
   console.log(user.username);
 
@@ -204,6 +206,7 @@ const CompleteSignUp = () => {
       <TouchableOpacity
         activeOpacity={0.5}
         onPress={handleComplete}
+        disabled={isLoading}
         style={{
           width: "90%",
           backgroundColor: DGlobals.icon,
@@ -216,15 +219,19 @@ const CompleteSignUp = () => {
           marginVertical: "15%",
         }}
       >
-        <Text
-          style={{
-            color: "#FFFFFF",
-            fontWeight: "bold",
-            textAlign: "center",
-          }}
-        >
-          Continue
-        </Text>
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontWeight: "bold",
+              textAlign: "center",
+            }}
+          >
+            Continue
+          </Text>
+        )}
       </TouchableOpacity>
     </SafeAreaView>
   );
