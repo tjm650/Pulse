@@ -138,7 +138,8 @@ export default function Drawer() {
             height: 50,
             marginBottom: "2%",
           },
-          drawerIcon: () => <DrawerProfileRB />,\n          drawerLabel: user?.name?.trim() || "Home",
+          drawerIcon: () => <DrawerProfileRB />,
+          drawerLabel: user?.name?.trim() || "Home",
         }}
         name="Main"
         component={BottomNav}
