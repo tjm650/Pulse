@@ -578,14 +578,18 @@ const useGlobal = create(
               data: details,
             });
 
-            const updatedUser = response.data.user || {
-              ...get().user,
+            const updatedUser = {
+              ...(get().user || {}),
+              ...(response.data.user || {}),
               ...details,
             };
 
+            // A successful completion response unlocks the main app navigator.
+            // StackNavigation observes signUpComplete and replaces CheckSignUp
+            // with DrawerStack, whose initial tab is Home.
             set((state) => ({
               user: updatedUser,
-              signUpComplete: Boolean(updatedUser.first_name),
+              signUpComplete: true,
               appState: {
                 ...state.appState,
                 isLoading: false,
