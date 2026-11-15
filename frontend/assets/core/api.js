@@ -9,9 +9,6 @@ const configuredApiUrl =
 
 export const API_BASE_URL = (configuredApiUrl || DEFAULT_API_URL).replace(/\/+$/, "");
 
-// Temporary network diagnostics: logs the destination only, never credentials or request bodies.
-console.info("[Pulse API] Resolved base URL:", API_BASE_URL);
-
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -23,7 +20,6 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
-    console.info("[Pulse API] Request:", config.method?.toUpperCase(), `${config.baseURL || API_BASE_URL}${config.url || ""}`);
     try {
       const tokens = await secure.get("tokens");
       if (tokens?.access) {
@@ -41,14 +37,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.error("[Pulse API] Request failed:", {
-      message: error.message,
-      code: error.code,
-      url: error.config ? `${error.config.baseURL || API_BASE_URL}${error.config.url || ""}` : "unknown",
-      hasHttpResponse: Boolean(error.response),
-      responseStatus: error.response?.status,
-    });
-
     const originalRequest = error.config;
     const requestUrl = originalRequest?.url || "";
     const isSignInRequest = /(?:^|\/)api\/signin\/?(?:\?|$)/i.test(requestUrl);
