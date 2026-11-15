@@ -562,6 +562,60 @@ const useGlobal = create(
           }
         },
 
+        completeSignUpDetails: async (details) => {
+          try {
+            set((state) => ({
+              appState: {
+                ...state.appState,
+                isLoading: true,
+                error: null,
+              },
+            }));
+
+            const response = await api({
+              method: "POST",
+              url: "/api/completedetails",
+              data: details,
+            });
+
+            const updatedUser = {
+              ...(get().user || {}),
+              ...(response.data.user || {}),
+              ...details,
+            };
+
+            // A successful completion response unlocks the main app navigator.
+            // StackNavigation observes signUpComplete and replaces CheckSignUp
+            // with DrawerStack, whose initial tab is Home.
+            set((state) => ({
+              user: updatedUser,
+              signUpComplete: true,
+              appState: {
+                ...state.appState,
+                isLoading: false,
+                error: null,
+                lastSync: new Date().toISOString(),
+              },
+            }));
+
+            return { success: true, user: updatedUser };
+          } catch (error) {
+            const message =
+              error.response?.data?.message ||
+              "Unable to save your details. Please try again.";
+
+            set((state) => ({
+              appState: {
+                ...state.appState,
+                isLoading: false,
+                error: message,
+              },
+            }));
+
+            return { success: false, error: message };
+          }
+        },
+
         signOut: async () => {
           try {
             const tokens = get().tokens;
