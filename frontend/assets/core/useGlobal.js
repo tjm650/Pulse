@@ -428,21 +428,30 @@ const useGlobal = create(
   //----------------------------------------
         signIn: async (credentials) => {
           try {
-            set({ appState: { ...get().appState, isLoading: true } });
-            
+            set((state) => ({
+              appState: {
+                ...state.appState,
+                isLoading: true,
+                error: null,
+              },
+            }));
+
             const response = await api({
               method: "POST",
               url: "/api/signin",
               data: credentials,
             });
-            
+
             if (response.status === 200) {
               const user = response.data.user;
               const tokens = response.data.tokens;
 
               if (supabase) {
-                  await supabase.auth.setSession({ access_token: tokens.access, refresh_token: tokens.refresh });
-                }
+                await supabase.auth.setSession({
+                  access_token: tokens.access,
+                  refresh_token: tokens.refresh,
+                });
+              }
               await secure.set("tokens", tokens);
 
               set((state) => ({
@@ -453,30 +462,44 @@ const useGlobal = create(
                 language: user.language || "en",
                 signUpComplete: user.first_name && true,
                 agreementChecked: user.agreement && true,
-                appState: { 
-                  ...state.appState, 
+                appState: {
+                  ...state.appState,
                   isLoading: false,
-                  lastSync: new Date().toISOString()
+                  error: null,
+                  lastSync: new Date().toISOString(),
                 },
               }));
-              
+
               get().initializeUserData();
               get().socketConnect();
-              
+
               return { success: true, user };
             }
-            
-            return { success: false, error: "Invalid credentials" };
-          } catch (error) {
-            console.error("Sign in error:", error);
+
+            const message = "Invalid username or password.";
             set((state) => ({
-              appState: { 
-                ...state.appState, 
+              appState: {
+                ...state.appState,
                 isLoading: false,
-                error: error.message 
-              }
+                error: message,
+              },
             }));
-            return { success: false, error: error.message };
+            return { success: false, error: message };
+          } catch (error) {
+            const message =
+              error.response?.status === 401
+                ? "Invalid username or password."
+                : "Unable to sign in. Please check your connection and try again.";
+
+            set((state) => ({
+              appState: {
+                ...state.appState,
+                isLoading: false,
+                error: message,
+              },
+            }));
+
+            return { success: false, error: message };
           }
         },
 
