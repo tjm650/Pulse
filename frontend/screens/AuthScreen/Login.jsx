@@ -150,7 +150,7 @@ const Login = () => {
           AccountExistance={"Don't have an account ?"}
           onPressChangeScreen={() => navigation.navigate("Register")}
         />
-        <AuthBottom />
+        {/* <AuthBottom /> */}
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
