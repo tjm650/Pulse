@@ -1,24 +1,19 @@
-import React from 'react'
-import { Image, StyleSheet, View } from 'react-native'
+import React from 'react';
+import { Image, StyleSheet, View } from 'react-native';
 
-const LOGO = ({ width, height}) => {
-    const logo = require("../../assets/images/general.jpg")
-  return (
-    <View>
-      <Image
+const LOGO = ({ width, height }) => (
+  <View>
+    <Image
+      source={require('../../assets/logo.png')}
+      resizeMode="contain"
       style={{
-        width: width,
-        height:height,
-        shadowColor:"red",
-        shadowOffset: {width:50, height:50},
-        shadowRadius:50,
+        width,
+        height,
       }}
-      source={logo}
-      />
-    </View>
-  )
-}
+    />
+  </View>
+);
 
-export default LOGO
+export default LOGO;
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({});
