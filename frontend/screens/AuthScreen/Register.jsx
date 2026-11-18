@@ -221,7 +221,7 @@ const Register = () => {
           AccountExistance={"Already have an account ?"}
           onPressChangeScreen={() => navigation.navigate("Login")}
         />
-        <AuthBottom />
+        {/* <AuthBottom /> */}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
