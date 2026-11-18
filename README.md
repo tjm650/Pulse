@@ -1,7 +1,5 @@
 # Pulse
 
-Pulse is the source-driven rebuild of the existing Community mobile application.
-
 ## Project structure
 
 ```text
